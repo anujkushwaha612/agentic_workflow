@@ -166,10 +166,15 @@ def cmd_inspect(args: Any) -> int:
         if args.tools:
             for r in rows:
                 if r["etype"] in ("TOOL_CALL", "TOOL_RESULT", "TOOL_REFUSED"):
-                    print(f"{r['seq']:>4}  {r['etype']:<12} {json.dumps(
-                        {k: v for k, v in (r['payload'] or {}).items()
+                    # NOTE(migration audit): the original nested this dict-comprehension inside an
+                    # f-string across lines, which is a SyntaxError on Python <= 3.11 (PEP 701 is
+                    # 3.12+). Hoisted to a local so the file parses on the documented runtime; the
+                    # printed bytes are identical.
+                    blob = json.dumps(
+                        {k: v for k, v in (r["payload"] or {}).items()
                          if k in ('tool', 'ok', 'exit_code', 'args_preview', 'code', 'truncated',
-                                  'changed')}, default=str)[:220]}")
+                                  'changed')}, default=str)
+                    print(f"{r['seq']:>4}  {r['etype']:<12} {blob[:220]}")
     finally:
         j.close()
     return EXIT_VERIFIED
