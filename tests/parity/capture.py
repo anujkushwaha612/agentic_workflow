@@ -161,6 +161,7 @@ def scenario_e2e_calc() -> None:
         json.dump(res.to_dict(), f, indent=1, sort_keys=True, default=str)
     with (out / "verification.json").open("w") as f:
         json.dump(res.verification, f, indent=1, sort_keys=True, default=str)
+    shutil.rmtree(ws, ignore_errors=True)  # scratch workspace: keep fixtures clean
 
 
 def main() -> int:

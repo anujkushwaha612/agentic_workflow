@@ -1,0 +1,28 @@
+[package]
+name = "arena"
+version = "0.3.0"
+edition = "2021"
+description = "Agentic OS runtime (Rust canonical implementation; Python reference frozen at tests/parity/)"
+license = "MIT OR Apache-2.0"
+
+# Dependency policy: this crate is std-only by design. The sandbox cannot reach
+# crates.io or static.rust-lang.org (see RUST_MIGRATION_PLAN.md §0), so every
+# capability - JSON, SHA-256, SQLite, glob matching, argument parsing, logging -
+# is implemented here against the platform (libsqlite3.so.0 via exact-filename
+# FFI) and verified for parity against the Python reference.
+
+[lib]
+name = "arena"
+path = "src/lib.rs"
+
+[[bin]]
+name = "arena"
+path = "src/bin/arena.rs"
+
+[[bin]]
+name = "arena-code"
+path = "src/bin/arena_code.rs"
+
+[profile.release]
+debug = false
+lto = false

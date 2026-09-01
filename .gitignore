@@ -3,3 +3,6 @@ __pycache__/
 var/
 .pytest_cache/
 projects/
+
+# rust build artifacts (toolchain is provisioned by tools/setup-rust.sh)
+/target/
