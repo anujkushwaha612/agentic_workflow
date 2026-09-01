@@ -114,14 +114,19 @@ def scenario_crash_resume() -> None:
     k.run(25)
     _dump(k, out, 25, extra={"phase": "pre-crash"})
     # a second process rebuilds from the same journal and finishes the run
-    k2 = Kernel.from_journal(out / "journal.db", root=str(out), quiet=False,
-                             budget=SpawnBudget(max_active_agents=6,
-                                                max_concurrent_workers=2,
-                                                max_spawn_epoch=3, idle_ttl=1e9))
+    # Resume a SECOND process from a copy of the journal. The copy must be made
+    # first and passed to from_journal, so the resumed kernel's connection (and
+    # every append) targets the copy. (Reassigning `journal.path` after the fact
+    # does NOT redirect the open sqlite connection — that left row 137 in the
+    # original and the copy stale at 136, so the resumed fold.json described a
+    # journal the resumed fixture file did not contain.)
     out2 = out / "resumed"
     out2.mkdir(exist_ok=True)
     shutil.copy(out / "journal.db", out2 / "journal.db")
-    k2.journal.path = out2 / "journal.db"  # keep writing to the copy
+    k2 = Kernel.from_journal(out2 / "journal.db", root=str(out), quiet=False,
+                             budget=SpawnBudget(max_active_agents=6,
+                                                max_concurrent_workers=2,
+                                                max_spawn_epoch=3, idle_ttl=1e9))
     k2.run(400)
     _dump(k2, out2, 400, extra={"phase": "resumed"})
 
