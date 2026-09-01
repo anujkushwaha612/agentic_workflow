@@ -1,0 +1,220 @@
+{
+ "agents": {
+  "auth_01": {
+   "epoch": 0,
+   "msgs_sent": 4,
+   "policy_cursor": 0,
+   "role": "auth",
+   "skills": [
+    "auth",
+    "jwt",
+    "sessions"
+   ],
+   "state": "COMPLETED",
+   "steps_run": 5,
+   "task_id": null,
+   "task_queue": [],
+   "waits": [],
+   "work_done": 3.0
+  },
+  "backend_01": {
+   "epoch": 0,
+   "msgs_sent": 1,
+   "policy_cursor": 0,
+   "role": "backend",
+   "skills": [
+    "api",
+    "contracts"
+   ],
+   "state": "COMPLETED",
+   "steps_run": 7,
+   "task_id": null,
+   "task_queue": [],
+   "waits": [],
+   "work_done": 6.0
+  },
+  "cloud_01": {
+   "epoch": 0,
+   "msgs_sent": 4,
+   "policy_cursor": 0,
+   "role": "cloud",
+   "skills": [
+    "deploy",
+    "iac"
+   ],
+   "state": "COMPLETED",
+   "steps_run": 5,
+   "task_id": null,
+   "task_queue": [],
+   "waits": [],
+   "work_done": 2.0
+  },
+  "database_01": {
+   "epoch": 0,
+   "msgs_sent": 4,
+   "policy_cursor": 0,
+   "role": "database",
+   "skills": [
+    "schema",
+    "sql"
+   ],
+   "state": "COMPLETED",
+   "steps_run": 6,
+   "task_id": null,
+   "task_queue": [],
+   "waits": [],
+   "work_done": 6.0
+  },
+  "frontend_01": {
+   "epoch": 0,
+   "msgs_sent": 3,
+   "policy_cursor": 0,
+   "role": "frontend",
+   "skills": [
+    "react",
+    "ui"
+   ],
+   "state": "COMPLETED",
+   "steps_run": 5,
+   "task_id": null,
+   "task_queue": [],
+   "waits": [],
+   "work_done": 5.0
+  }
+ },
+ "artifacts": {
+  "backend/src": 1,
+  "contracts/api.json": 1,
+  "contracts/auth_api.json": 1,
+  "database/migrations": 1,
+  "database/schema.sql": 1,
+  "database/tuning.md": 1,
+  "deploy/compose.yaml": 1,
+  "deploy/main.tf": 1,
+  "frontend/design": 1,
+  "frontend/src": 1
+ },
+ "claims": {
+  "auth|contracts/auth_api.json": "auth_01",
+  "backend|backend/src": "backend_01",
+  "backend|contracts/api.json": "backend_01",
+  "cloud|deploy/compose.yaml|deploy/main.tf": "cloud_01",
+  "database tuner|database/tuning.md|spawn:c94b9720": "database_01",
+  "database|database/migrations|database/schema.sql": "database_01",
+  "frontend|frontend/design": "frontend_01",
+  "frontend|frontend/src": "frontend_01"
+ },
+ "events": 152,
+ "tasks": {
+  "t_api_contract": {
+   "claims": [],
+   "consumes": [
+    "database/schema.sql"
+   ],
+   "deps": [
+    "t_db_schema"
+   ],
+   "est_work": 2.0,
+   "owner": "backend_01",
+   "produces": [
+    "contracts/api.json"
+   ],
+   "status": "done"
+  },
+  "t_api_impl": {
+   "claims": [],
+   "consumes": [
+    "database/schema.sql",
+    "contracts/auth_api.json",
+    "database/migrations"
+   ],
+   "deps": [
+    "t_auth",
+    "t_db_schema"
+   ],
+   "est_work": 4.0,
+   "owner": "backend_01",
+   "produces": [
+    "backend/src"
+   ],
+   "status": "done"
+  },
+  "t_auth": {
+   "claims": [],
+   "consumes": [],
+   "deps": [],
+   "est_work": 3.0,
+   "owner": "auth_01",
+   "produces": [
+    "contracts/auth_api.json"
+   ],
+   "status": "done"
+  },
+  "t_cloud_infra": {
+   "claims": [],
+   "consumes": [],
+   "deps": [],
+   "est_work": 2.0,
+   "owner": "cloud_01",
+   "produces": [
+    "deploy/main.tf",
+    "deploy/compose.yaml"
+   ],
+   "status": "done"
+  },
+  "t_database_tuner_c94b97": {
+   "claims": [
+    "spawn:c94b9720"
+   ],
+   "consumes": [],
+   "deps": [],
+   "est_work": 3.0,
+   "owner": "database_01",
+   "produces": [
+    "database/tuning.md"
+   ],
+   "status": "done"
+  },
+  "t_db_schema": {
+   "claims": [],
+   "consumes": [],
+   "deps": [],
+   "est_work": 3.0,
+   "owner": "database_01",
+   "produces": [
+    "database/schema.sql",
+    "database/migrations"
+   ],
+   "status": "done"
+  },
+  "t_fe_design": {
+   "claims": [],
+   "consumes": [],
+   "deps": [],
+   "est_work": 2.0,
+   "owner": "frontend_01",
+   "produces": [
+    "frontend/design"
+   ],
+   "status": "done"
+  },
+  "t_fe_integration": {
+   "claims": [],
+   "consumes": [
+    "contracts/api.json",
+    "contracts/auth_api.json"
+   ],
+   "deps": [
+    "t_api_contract",
+    "t_auth"
+   ],
+   "est_work": 3.0,
+   "owner": "frontend_01",
+   "produces": [
+    "frontend/src"
+   ],
+   "status": "done"
+  }
+ },
+ "tick": 10
+}

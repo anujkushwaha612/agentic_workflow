@@ -1,0 +1,188 @@
+{
+  "project_id": "fixture-calc",
+  "prompt": "Build a small, tested Python CLI calculator (src/calc.py, src/calc_cli.py, tests/test_calc.py) and document it.",
+  "created_at": 1788302985.6537406,
+  "created_at_iso": "2026-09-01T22:49:45+0000",
+  "runtime_version": "0.3.0-m0m2",
+  "state": "completed",
+  "history": [
+    {
+      "state": "created",
+      "at": 1788302985.6537504
+    },
+    {
+      "state": "running",
+      "at": 1788302985.6948504
+    },
+    {
+      "state": "completed",
+      "at": 1788302988.1427827,
+      "verified": true,
+      "wall_s": 1.775,
+      "ticks": 16,
+      "commit": {
+        "ok": true,
+        "exit": 0,
+        "detail": "/calc.py\n create mode 100644 src/calc_cli.py\n create mode 100644 tests/__pycache__/test_calc.cpython-311-pytest-9.1.1.pyc\n create mode 100644 tests/test_calc.py"
+      }
+    }
+  ],
+  "workspace": "/home/user/agentic_workflow/tests/parity/fixtures/e2e_calc/ws",
+  "layout": {
+    "journal": ".arena/j.db",
+    "source": "source/",
+    "artifacts": "artifacts/",
+    "logs": "logs/",
+    "context": ".arena/context/"
+  },
+  "provenance": {
+    "launched_by": "cli",
+    "prompt_source": "argv"
+  },
+  "plan": {
+    "goal": "Build a small, tested Python CLI calculator (src/calc.py, src/calc_cli.py, tests/test_calc.py) and document it.",
+    "src_dir": "source",
+    "agents": [
+      {
+        "agent_id": "coder_01",
+        "role": "coder",
+        "task": {
+          "task_id": "t_calc_code",
+          "title": "author calculator + tests, run them, correct what they catch",
+          "role": "coder",
+          "skills": [
+            "python",
+            "cli",
+            "testing"
+          ],
+          "est_work": 4.0,
+          "produces": [
+            "src/calc.py",
+            "src/calc_cli.py",
+            "tests/test_calc.py"
+          ],
+          "consumes": [],
+          "verify": [
+            [
+              "python3",
+              "-m",
+              "pytest",
+              "-q",
+              "tests"
+            ],
+            [
+              "python3",
+              "src/calc.py",
+              "series",
+              "4"
+            ],
+            [
+              "python3",
+              "src/calc.py",
+              "add",
+              "2",
+              "3"
+            ]
+          ]
+        },
+        "writes": [
+          "src",
+          "tests"
+        ],
+        "reads": [
+          "src",
+          "tests"
+        ],
+        "fix_files": [],
+        "seed": {
+          "src/calc.py": "\"\"\"arena-code: a tiny calculator. Written to disk by an agent, through the tool layer.\"\"\"\nfrom __future__ import annotations\n\n\ndef add(a: float, b: float) -> float:\n    return a + b\n\n\ndef sub(a: float, b: float) -> float:\n    return a - b\n\n\ndef mul(a: float, b: float) -> float:\n    return a * b\n\n\ndef div(a: float, b: float) -> float:\n    if b == 0:\n        raise ValueError(\"division by zero\")\n    return a / b\n\n\ndef _stop(n: int) -> int:\n    \"\"\"The exclusive bound for the series loop: `range(1, _stop(n))` runs 1..n.\"\"\"\n    return n\n\n\ndef sum_series(n: int) -> int:\n    \"\"\"Sum 1..n inclusive.\"\"\"\n    total = 0\n    for i in range(1, _stop(n)):  # ARENA-BUG: this bound is exclusive. ARENA-FIX: for i in range(1, _stop(n) + 1):\n        total += i\n    return total\n\n\ndef main(argv=None) -> int:\n    import argparse\n    from calc_cli import compute\n    ap = argparse.ArgumentParser(prog=\"calc\", description=\"tiny calculator\")\n    ap.add_argument(\"op\")\n    ap.add_argument(\"a\", type=float)\n    ap.add_argument(\"b\", type=float, nargs=\"?\", default=0.0)\n    ns = ap.parse_args(argv)\n    print(compute(ns.op, ns.a, ns.b))  # ARENA-BUG: floats print as `5.0`. ARENA-FIX: print(_fmt(compute(ns.op, ns.a, ns.b)))\n    return 0\n\n\ndef _fmt(v):\n    \"\"\"Whole numbers print without a trailing `.0`.\"\"\"\n    return int(v) if isinstance(v, float) and v == int(v) else v\n\n\nif __name__ == \"__main__\":\n    raise SystemExit(main())\n",
+          "src/calc_cli.py": "\"\"\"arena-code: the arithmetic front end. Authored here; deliberately out of this suite's scope.\"\"\"\nfrom __future__ import annotations\n\n\ndef sum_series(n: int) -> int:\n    \"\"\"A copy of the series sum, kept local so the CLI does not depend on `calc` being importable.\"\"\"\n    total = 0\n    for i in range(1, n):  # ARENA-BUG: exclusive bound. ARENA-FIX: for i in range(1, n + 1):\n        total += i\n    return total\n\n\ndef compute(op: str, a: float, b: float = 0.0):\n    from calc import add, div, mul, sub\n    ops = {\"add\": add, \"sub\": sub, \"mul\": mul, \"div\": div}\n    if op == \"series\":\n        return sum_series(int(a))\n    if op not in ops:\n        raise ValueError(\"unknown op %r\" % op)\n    return ops[op](a, b)\n",
+          "tests/test_calc.py": "\"\"\"arena-code: the test suite. Also written by an agent, also real.\n\nThe module under test is `src/calc.py`; the CLI front end is `src/calc_cli.py`. A failing\nassertion here means the correction belongs in one of those two files, never in this one. The series bound\nis computed by `_stop` in `src/calc.py`, and `range(1, _stop(n))` is deliberately exclusive there.\nThree assertions can fail, with three different causes in two different files: a wrong bound in\n`src/calc.py`, a wrong print format in `src/calc.py`, and the CLI's own copy of the series in\n`src/calc_cli.py` (`python3 src/calc.py series 4` runs that file, so a bad number there is *not*\nevidence about `src/calc.py`). Reading one file is not enough to know where a failure lives. Nothing in this\nsuite asserts anything about `src/calc_cli.py`'s own copy of `sum_series`, so a failure here is not\nevidence about it.\n\"\"\"\nfrom __future__ import annotations\n\nimport importlib.util\nimport subprocess\nimport sys\nfrom pathlib import Path\n\nROOT = Path(__file__).resolve().parents[1]\n\n\ndef load(name):\n    spec = importlib.util.spec_from_file_location(name, ROOT / \"src\" / (name + \".py\"))\n    mod = importlib.util.module_from_spec(spec)\n    sys.modules[name] = mod\n    spec.loader.exec_module(mod)\n    return mod\n\n\ndef test_basic_operations():\n    c = load(\"calc\")\n    assert c.add(2, 3) == 5\n    assert c.sub(9, 4) == 5\n    assert c.mul(3, 4) == 12\n    assert c.div(10, 4) == 2.5\n\n\ndef test_division_by_zero_raises():\n    c = load(\"calc\")\n    try:\n        c.div(1, 0)\n    except ValueError:\n        return\n    raise AssertionError(\"expected ValueError\")\n\n\ndef test_series_is_inclusive():\n    c = load(\"calc\")\n    assert c.sum_series(4) == 10, \"1+2+3+4 must be 10, got %s\" % c.sum_series(4)\n\n\ndef test_cli_series_output():\n    out = subprocess.run([sys.executable, \"src/calc.py\", \"series\", \"4\"],\n                         capture_output=True, text=True, cwd=str(ROOT))\n    assert out.returncode == 0, out.stderr\n    assert out.stdout.strip() == \"10\", \"CLI said %r, expected '10'\" % out.stdout.strip()\n\n\ndef test_cli_arithmetic():\n    out = subprocess.run([sys.executable, \"src/calc.py\", \"add\", \"2\", \"3\"],\n                         capture_output=True, text=True, cwd=str(ROOT))\n    assert out.stdout.strip() == \"5\", out.stdout\n"
+        },
+        "policy": {
+          "test_command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tests"
+          ],
+          "wait_for": ""
+        }
+      },
+      {
+        "agent_id": "docs_01",
+        "role": "docs",
+        "task": {
+          "task_id": "t_calc_docs",
+          "title": "document the CLI against the code that actually exists",
+          "role": "docs",
+          "skills": [
+            "docs"
+          ],
+          "est_work": 1.0,
+          "produces": [
+            "docs/usage.md"
+          ],
+          "consumes": [
+            "src/calc.py"
+          ],
+          "verify": [
+            [
+              "python3",
+              "src/calc.py",
+              "series",
+              "4"
+            ],
+            [
+              "python3",
+              "-m",
+              "pytest",
+              "-q",
+              "tests"
+            ]
+          ]
+        },
+        "writes": [
+          "docs"
+        ],
+        "reads": [
+          "src",
+          "tests",
+          "docs"
+        ],
+        "fix_files": [
+          "docs/usage.md"
+        ],
+        "seed": {
+          "docs/usage.md": "# calc\n\nA tiny calculator built inside an Arena workspace.\n\n```\npython3 src/calc.py add 2 3      # -> 5\npython3 src/calc.py series 4     # -> 10\n```\n\nOperations: add, sub, mul, div, series. Division by zero raises ValueError.\n"
+        },
+        "policy": {
+          "test_command": [
+            "python3",
+            "-c",
+            "pass"
+          ],
+          "wait_for": "artifact:src/calc.py"
+        }
+      }
+    ],
+    "commit_after_verify": true
+  },
+  "provider": "policy",
+  "model": "",
+  "plan_source": "packaged:calc",
+  "kernel_root": "/home/user/agentic_workflow/tests/parity/fixtures/e2e_calc/ws/projects/fixture-calc/.arena",
+  "journal": "/home/user/agentic_workflow/tests/parity/fixtures/e2e_calc/ws/projects/fixture-calc/.arena/j.db",
+  "execution": {
+    "subprocess_executions": 15,
+    "commands": 13,
+    "test_runs": 10,
+    "file_mutations": 7,
+    "refusals": 0,
+    "violations": 0,
+    "timeouts": 0
+  },
+  "events": 105,
+  "wall_s": 1.775
+}

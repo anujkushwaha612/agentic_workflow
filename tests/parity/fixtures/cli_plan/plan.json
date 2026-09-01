@@ -1,0 +1,196 @@
+{
+ "edges": {
+  "t_api_contract": [
+   "database/schema.sql"
+  ],
+  "t_api_impl": [
+   "database/schema.sql",
+   "contracts/auth_api.json",
+   "database/migrations"
+  ],
+  "t_fe_integration": [
+   "contracts/api.json",
+   "contracts/auth_api.json"
+  ]
+ },
+ "generations": [
+  [
+   "t_auth",
+   "t_cloud_infra",
+   "t_db_schema",
+   "t_fe_design"
+  ],
+  [
+   "t_api_contract",
+   "t_api_impl"
+  ],
+  [
+   "t_fe_integration"
+  ]
+ ],
+ "roles": [
+  "auth",
+  "backend",
+  "cloud",
+  "database",
+  "frontend"
+ ],
+ "tasks": {
+  "t_api_contract": {
+   "consumes": [
+    "database/schema.sql"
+   ],
+   "deps": [
+    "t_db_schema"
+   ],
+   "est_work": 2.0,
+   "owner": null,
+   "produces": [
+    "contracts/api.json"
+   ],
+   "role": "backend",
+   "started": false,
+   "status": "pending",
+   "task_id": "t_api_contract",
+   "title": "author API contract (OpenAPI)",
+   "verified": false,
+   "verify": []
+  },
+  "t_api_impl": {
+   "consumes": [
+    "database/schema.sql",
+    "contracts/auth_api.json",
+    "database/migrations"
+   ],
+   "deps": [
+    "t_auth",
+    "t_db_schema"
+   ],
+   "est_work": 4.0,
+   "owner": null,
+   "produces": [
+    "backend/src"
+   ],
+   "role": "backend",
+   "started": false,
+   "status": "pending",
+   "task_id": "t_api_impl",
+   "title": "implement API endpoints",
+   "verified": false,
+   "verify": []
+  },
+  "t_auth": {
+   "consumes": [],
+   "deps": [],
+   "est_work": 3.0,
+   "owner": null,
+   "produces": [
+    "contracts/auth_api.json"
+   ],
+   "role": "auth",
+   "started": false,
+   "status": "pending",
+   "task_id": "t_auth",
+   "title": "authentication + session design",
+   "verified": false,
+   "verify": []
+  },
+  "t_cloud_infra": {
+   "consumes": [],
+   "deps": [],
+   "est_work": 2.0,
+   "owner": null,
+   "produces": [
+    "deploy/main.tf",
+    "deploy/compose.yaml"
+   ],
+   "role": "cloud",
+   "started": false,
+   "status": "pending",
+   "task_id": "t_cloud_infra",
+   "title": "infrastructure + deployment spec",
+   "verified": false,
+   "verify": []
+  },
+  "t_db_schema": {
+   "consumes": [],
+   "deps": [],
+   "est_work": 3.0,
+   "owner": null,
+   "produces": [
+    "database/schema.sql",
+    "database/migrations"
+   ],
+   "role": "database",
+   "started": false,
+   "status": "pending",
+   "task_id": "t_db_schema",
+   "title": "design schema + migrations",
+   "verified": false,
+   "verify": []
+  },
+  "t_fe_design": {
+   "consumes": [],
+   "deps": [],
+   "est_work": 2.0,
+   "owner": null,
+   "produces": [
+    "frontend/design"
+   ],
+   "role": "frontend",
+   "started": false,
+   "status": "pending",
+   "task_id": "t_fe_design",
+   "title": "UI architecture + design system",
+   "verified": false,
+   "verify": []
+  },
+  "t_fe_integration": {
+   "consumes": [
+    "contracts/api.json",
+    "contracts/auth_api.json"
+   ],
+   "deps": [
+    "t_api_contract",
+    "t_auth"
+   ],
+   "est_work": 3.0,
+   "owner": null,
+   "produces": [
+    "frontend/src"
+   ],
+   "role": "frontend",
+   "started": false,
+   "status": "pending",
+   "task_id": "t_fe_integration",
+   "title": "wire UI to API",
+   "verified": false,
+   "verify": []
+  }
+ },
+ "why": {
+  "auth": [
+   "auth"
+  ],
+  "backend": [
+   "api",
+   "backend",
+   "t_api_contract:sequel"
+  ],
+  "cloud": [
+   "cloud",
+   "deploy",
+   "deployment"
+  ],
+  "database": [
+   "database",
+   "postgres",
+   "sql"
+  ],
+  "frontend": [
+   "ui",
+   "dashboard",
+   "t_fe_design:sequel"
+  ]
+ }
+}

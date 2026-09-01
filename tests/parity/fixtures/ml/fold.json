@@ -1,0 +1,110 @@
+{
+ "agents": {
+  "evaluation_01": {
+   "agent_id": "evaluation_01",
+   "epoch": 0,
+   "msgs_sent": 2,
+   "policy_cursor": 0,
+   "role": "evaluation",
+   "skills": [
+    "eval",
+    "metrics"
+   ],
+   "spawned_by": "parent",
+   "state": "COMPLETED",
+   "state_since": 0.05,
+   "steps_run": 4,
+   "task_id": null,
+   "task_queue": [],
+   "terminated_reason": null,
+   "transitions": 6,
+   "work_done": 2.0
+  },
+  "ml_engineer_01": {
+   "agent_id": "ml_engineer_01",
+   "epoch": 0,
+   "msgs_sent": 4,
+   "policy_cursor": 0,
+   "role": "ml-engineer",
+   "skills": [
+    "ml",
+    "pipeline"
+   ],
+   "spawned_by": "parent",
+   "state": "COMPLETED",
+   "state_since": 0.04,
+   "steps_run": 5,
+   "task_id": null,
+   "task_queue": [],
+   "terminated_reason": null,
+   "transitions": 4,
+   "work_done": 4.0
+  }
+ },
+ "artifacts": {
+  "ml/eval": 1,
+  "ml/pipeline": 1
+ },
+ "claims": {
+  "evaluation|ml/eval": {
+   "losers": [],
+   "owner": "evaluation_01",
+   "task_id": "t_ml_eval"
+  },
+  "ml-engineer|ml/pipeline": {
+   "losers": [],
+   "owner": "ml_engineer_01",
+   "task_id": "t_ml_pipeline"
+  }
+ },
+ "events": 51,
+ "meta": {
+  "tick_ts": 0.05
+ },
+ "requests": {},
+ "tasks": {
+  "t_ml_eval": {
+   "claims": [],
+   "consumes": [
+    "ml/pipeline"
+   ],
+   "deps": [
+    "t_ml_pipeline"
+   ],
+   "est_work": 2.0,
+   "owner": "evaluation_01",
+   "produces": [
+    "ml/eval"
+   ],
+   "role": "evaluation",
+   "skills": [
+    "eval",
+    "metrics"
+   ],
+   "started": false,
+   "status": "done",
+   "task_id": "t_ml_eval",
+   "title": "evaluation harness"
+  },
+  "t_ml_pipeline": {
+   "claims": [],
+   "consumes": [],
+   "deps": [],
+   "est_work": 4.0,
+   "owner": "ml_engineer_01",
+   "produces": [
+    "ml/pipeline"
+   ],
+   "role": "ml-engineer",
+   "skills": [
+    "ml",
+    "pipeline"
+   ],
+   "started": false,
+   "status": "done",
+   "task_id": "t_ml_pipeline",
+   "title": "data pipeline + training loop"
+  }
+ },
+ "waits": {}
+}

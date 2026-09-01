@@ -1,0 +1,314 @@
+{
+ "agents": {
+  "auth_01": {
+   "agent_id": "auth_01",
+   "epoch": 0,
+   "msgs_sent": 4,
+   "policy_cursor": 0,
+   "role": "auth",
+   "skills": [
+    "auth",
+    "jwt",
+    "sessions"
+   ],
+   "spawned_by": "parent",
+   "state": "COMPLETED",
+   "state_since": 0.07,
+   "steps_run": 5,
+   "task_id": null,
+   "task_queue": [],
+   "terminated_reason": null,
+   "transitions": 4,
+   "work_done": 3.0
+  },
+  "backend_01": {
+   "agent_id": "backend_01",
+   "epoch": 0,
+   "msgs_sent": 1,
+   "policy_cursor": 0,
+   "role": "backend",
+   "skills": [
+    "api",
+    "contracts"
+   ],
+   "spawned_by": "parent",
+   "state": "COMPLETED",
+   "state_since": 0.09,
+   "steps_run": 5,
+   "task_id": null,
+   "task_queue": [],
+   "terminated_reason": null,
+   "transitions": 6,
+   "work_done": 6.0
+  },
+  "cloud_01": {
+   "agent_id": "cloud_01",
+   "epoch": 0,
+   "msgs_sent": 4,
+   "policy_cursor": 0,
+   "role": "cloud",
+   "skills": [
+    "deploy",
+    "iac"
+   ],
+   "spawned_by": "parent",
+   "state": "COMPLETED",
+   "state_since": 0.08,
+   "steps_run": 5,
+   "task_id": null,
+   "task_queue": [],
+   "terminated_reason": null,
+   "transitions": 4,
+   "work_done": 2.0
+  },
+  "database_01": {
+   "agent_id": "database_01",
+   "epoch": 0,
+   "msgs_sent": 4,
+   "policy_cursor": 0,
+   "role": "database",
+   "skills": [
+    "schema",
+    "sql"
+   ],
+   "spawned_by": "parent",
+   "state": "COMPLETED",
+   "state_since": 0.08,
+   "steps_run": 5,
+   "task_id": null,
+   "task_queue": [],
+   "terminated_reason": null,
+   "transitions": 4,
+   "work_done": 3.0
+  },
+  "frontend_01": {
+   "agent_id": "frontend_01",
+   "epoch": 0,
+   "msgs_sent": 3,
+   "policy_cursor": 0,
+   "role": "frontend",
+   "skills": [
+    "react",
+    "ui"
+   ],
+   "spawned_by": "parent",
+   "state": "COMPLETED",
+   "state_since": 0.07,
+   "steps_run": 5,
+   "task_id": null,
+   "task_queue": [],
+   "terminated_reason": null,
+   "transitions": 4,
+   "work_done": 5.0
+  }
+ },
+ "artifacts": {
+  "backend/src": 1,
+  "contracts/api.json": 1,
+  "contracts/auth_api.json": 1,
+  "database/migrations": 1,
+  "database/schema.sql": 1,
+  "deploy/compose.yaml": 1,
+  "deploy/main.tf": 1,
+  "frontend/design": 1,
+  "frontend/src": 1
+ },
+ "claims": {
+  "auth|contracts/auth_api.json": {
+   "losers": [],
+   "owner": "auth_01",
+   "task_id": "t_auth"
+  },
+  "backend|backend/src": {
+   "losers": [],
+   "owner": "backend_01",
+   "task_id": "t_api_impl"
+  },
+  "backend|contracts/api.json": {
+   "losers": [],
+   "owner": "backend_01",
+   "task_id": "t_api_contract"
+  },
+  "cloud|deploy/compose.yaml|deploy/main.tf": {
+   "losers": [],
+   "owner": "cloud_01",
+   "task_id": "t_cloud_infra"
+  },
+  "database|database/migrations|database/schema.sql": {
+   "losers": [],
+   "owner": "database_01",
+   "task_id": "t_db_schema"
+  },
+  "frontend|frontend/design": {
+   "losers": [],
+   "owner": "frontend_01",
+   "task_id": "t_fe_design"
+  },
+  "frontend|frontend/src": {
+   "losers": [],
+   "owner": "frontend_01",
+   "task_id": "t_fe_integration"
+  }
+ },
+ "events": 135,
+ "meta": {
+  "tick_ts": 0.09
+ },
+ "requests": {},
+ "tasks": {
+  "t_api_contract": {
+   "claims": [],
+   "consumes": [
+    "database/schema.sql"
+   ],
+   "deps": [
+    "t_db_schema"
+   ],
+   "est_work": 2.0,
+   "owner": "backend_01",
+   "produces": [
+    "contracts/api.json"
+   ],
+   "role": "backend",
+   "skills": [
+    "api",
+    "contracts"
+   ],
+   "started": false,
+   "status": "done",
+   "task_id": "t_api_contract",
+   "title": "author API contract (OpenAPI)"
+  },
+  "t_api_impl": {
+   "claims": [],
+   "consumes": [
+    "database/schema.sql",
+    "contracts/auth_api.json",
+    "database/migrations"
+   ],
+   "deps": [
+    "t_auth",
+    "t_db_schema"
+   ],
+   "est_work": 4.0,
+   "owner": "backend_01",
+   "produces": [
+    "backend/src"
+   ],
+   "role": "backend",
+   "skills": [
+    "api",
+    "server"
+   ],
+   "started": false,
+   "status": "done",
+   "task_id": "t_api_impl",
+   "title": "implement API endpoints"
+  },
+  "t_auth": {
+   "claims": [],
+   "consumes": [],
+   "deps": [],
+   "est_work": 3.0,
+   "owner": "auth_01",
+   "produces": [
+    "contracts/auth_api.json"
+   ],
+   "role": "auth",
+   "skills": [
+    "auth",
+    "jwt",
+    "sessions"
+   ],
+   "started": false,
+   "status": "done",
+   "task_id": "t_auth",
+   "title": "authentication + session design"
+  },
+  "t_cloud_infra": {
+   "claims": [],
+   "consumes": [],
+   "deps": [],
+   "est_work": 2.0,
+   "owner": "cloud_01",
+   "produces": [
+    "deploy/main.tf",
+    "deploy/compose.yaml"
+   ],
+   "role": "cloud",
+   "skills": [
+    "deploy",
+    "iac"
+   ],
+   "started": false,
+   "status": "done",
+   "task_id": "t_cloud_infra",
+   "title": "infrastructure + deployment spec"
+  },
+  "t_db_schema": {
+   "claims": [],
+   "consumes": [],
+   "deps": [],
+   "est_work": 3.0,
+   "owner": "database_01",
+   "produces": [
+    "database/schema.sql",
+    "database/migrations"
+   ],
+   "role": "database",
+   "skills": [
+    "schema",
+    "sql"
+   ],
+   "started": false,
+   "status": "done",
+   "task_id": "t_db_schema",
+   "title": "design schema + migrations"
+  },
+  "t_fe_design": {
+   "claims": [],
+   "consumes": [],
+   "deps": [],
+   "est_work": 2.0,
+   "owner": "frontend_01",
+   "produces": [
+    "frontend/design"
+   ],
+   "role": "frontend",
+   "skills": [
+    "react",
+    "ui"
+   ],
+   "started": false,
+   "status": "done",
+   "task_id": "t_fe_design",
+   "title": "UI architecture + design system"
+  },
+  "t_fe_integration": {
+   "claims": [],
+   "consumes": [
+    "contracts/api.json",
+    "contracts/auth_api.json"
+   ],
+   "deps": [
+    "t_api_contract",
+    "t_auth"
+   ],
+   "est_work": 3.0,
+   "owner": "frontend_01",
+   "produces": [
+    "frontend/src"
+   ],
+   "role": "frontend",
+   "skills": [
+    "integration",
+    "ui"
+   ],
+   "started": false,
+   "status": "done",
+   "task_id": "t_fe_integration",
+   "title": "wire UI to API"
+  }
+ },
+ "waits": {}
+}

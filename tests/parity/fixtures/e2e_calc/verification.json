@@ -1,0 +1,100 @@
+{
+ "at": 1788302988.1283782,
+ "ok": true,
+ "tasks": [
+  {
+   "commands": [
+    {
+     "argv": [
+      "python3",
+      "-m",
+      "pytest",
+      "-q",
+      "tests"
+     ],
+     "exit": 0,
+     "ok": true,
+     "stderr_tail": ""
+    },
+    {
+     "argv": [
+      "python3",
+      "src/calc.py",
+      "series",
+      "4"
+     ],
+     "exit": 0,
+     "ok": true,
+     "stderr_tail": ""
+    },
+    {
+     "argv": [
+      "python3",
+      "src/calc.py",
+      "add",
+      "2",
+      "3"
+     ],
+     "exit": 0,
+     "ok": true,
+     "stderr_tail": ""
+    }
+   ],
+   "files": {
+    "src/calc.py": {
+     "bytes": 1250,
+     "exists": true,
+     "sha256_16": "4bf013e88a12bc45"
+    },
+    "src/calc_cli.py": {
+     "bytes": 649,
+     "exists": true,
+     "sha256_16": "bd243a9c695a0b85"
+    },
+    "tests/test_calc.py": {
+     "bytes": 2281,
+     "exists": true,
+     "sha256_16": "855908aa19a8a0cd"
+    }
+   },
+   "open": false,
+   "task_id": "t_calc_code"
+  },
+  {
+   "commands": [
+    {
+     "argv": [
+      "python3",
+      "src/calc.py",
+      "series",
+      "4"
+     ],
+     "exit": 0,
+     "ok": true,
+     "stderr_tail": ""
+    },
+    {
+     "argv": [
+      "python3",
+      "-m",
+      "pytest",
+      "-q",
+      "tests"
+     ],
+     "exit": 0,
+     "ok": true,
+     "stderr_tail": ""
+    }
+   ],
+   "files": {
+    "docs/usage.md": {
+     "bytes": 226,
+     "exists": true,
+     "sha256_16": "2d162ce881e3bfc2"
+    }
+   },
+   "open": false,
+   "task_id": "t_calc_docs"
+  }
+ ]
+}
