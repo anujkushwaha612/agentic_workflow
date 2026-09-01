@@ -1,0 +1,20 @@
+#!/usr/bin/env python3
+"""`arena-code` — the launcher.
+
+A three-line shim, on purpose: no wrapper logic, no venv assumptions, no dependency that could drift
+from the package. It works from any cwd as long as this repository is on disk, because it puts the
+repo root (the parent of this file) on sys.path before importing.
+
+Install it properly if you prefer: `pip install -e .` gives you the same entry point as `arena-code`.
+"""
+from __future__ import annotations
+
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+from arena.code.cli import main  # noqa: E402
+
+if __name__ == "__main__":
+    raise SystemExit(main())
