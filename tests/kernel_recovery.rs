@@ -74,8 +74,8 @@ fn live_equals_recovered_and_quiet_replay_is_pure() {
     assert!(k.artifact_exists("api.json"));
 
     let live = k.snapshot();
-    let events_before = k.journal.count().unwrap();
-    let chain_before = k.journal.verify_chain().unwrap();
+    let events_before = k.journal().count().unwrap();
+    let chain_before = k.journal().verify_chain().unwrap();
     assert!(chain_before.0, "{}", chain_before.1);
 
     // drop the live connection so recovery opens the same file cleanly
@@ -91,7 +91,7 @@ fn live_equals_recovered_and_quiet_replay_is_pure() {
         ..KernelOpts::default()
     };
     let r = Kernel::from_journal(&d.join("j.db"), true, rec_opts).unwrap();
-    let events_after = r.journal.count().unwrap();
+    let events_after = r.journal().count().unwrap();
     assert_eq!(
         events_after, events_before,
         "quiet from_journal must not write"
@@ -104,7 +104,7 @@ fn live_equals_recovered_and_quiet_replay_is_pure() {
             "{key} live vs recovered"
         );
     }
-    let chain_after = r.journal.verify_chain().unwrap();
+    let chain_after = r.journal().verify_chain().unwrap();
     assert!(chain_after.0);
 
     // a loud resume must append exactly one REPLAY_COMPLETE
@@ -115,6 +115,6 @@ fn live_equals_recovered_and_quiet_replay_is_pure() {
         ..KernelOpts::default()
     };
     let loud = Kernel::from_journal(&d.join("j.db"), false, rec_opts2).unwrap();
-    assert_eq!(loud.journal.count().unwrap(), events_before + 1);
+    assert_eq!(loud.journal().count().unwrap(), events_before + 1);
     let _ = std::fs::remove_dir_all(&d);
 }

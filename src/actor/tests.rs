@@ -16,7 +16,7 @@ use std::collections::BTreeMap;
 // ------------------------------------------------------------------ harness
 
 /// A Kernel-shaped test double: owns the same modules Kernel will own, and
-/// implements [`ActorRuntime`] so actor tests do not wait on M8.
+/// implements [`WorldView`] + [`RuntimeEffects`] so actor tests do not wait on Kernel.
 struct Harness {
     journal: Journal,
     registry: AgentRegistry,
@@ -129,7 +129,7 @@ fn current_open(h: &Harness, id: &str) -> Option<TaskSpec> {
     None
 }
 
-impl ActorRuntime for Harness {
+impl WorldView for Harness {
     fn now(&self) -> f64 {
         self.clock.now()
     }
@@ -313,14 +313,46 @@ impl ActorRuntime for Harness {
     fn transcript_dir(&self) -> Option<String> {
         self.transcript_dir.clone()
     }
-    fn pop_inbox(&mut self, id: &str) -> Option<Message> {
-        self.bus.drain(id, Some(1)).into_iter().next()
-    }
     fn peek_inbox(&self, id: &str) -> Vec<Message> {
         self.bus.mailbox(id)
     }
     fn has_mail(&self, id: &str) -> bool {
         self.bus.mailbox_len(id) > 0
+    }
+    fn completion_gate(&self, id: &str) -> CompletionGate {
+        let Some(tid) = self.registry.get(id).and_then(|r| r.task_id.clone()) else {
+            return CompletionGate::default();
+        };
+        let Some(t) = self.graph.tasks.get(&tid) else {
+            return CompletionGate::default();
+        };
+        if t.verify.is_empty() {
+            return CompletionGate::default();
+        }
+        if t.verified {
+            return CompletionGate {
+                allow: true,
+                verified: true,
+                ..Default::default()
+            };
+        }
+        CompletionGate {
+            allow: false,
+            verified: false,
+            rule: "REJECT_UNVERIFIED".into(),
+            detail: format!(
+                "{} declares {} verify command(s); none has exited 0 for this task yet",
+                t.task_id.as_str(),
+                t.verify.len()
+            ),
+            task_id: Some(t.task_id.as_str().into()),
+        }
+    }
+}
+
+impl RuntimeEffects for Harness {
+    fn pop_inbox(&mut self, id: &str) -> Option<Message> {
+        self.bus.drain(id, Some(1)).into_iter().next()
     }
     fn transition(&mut self, id: &str, to: AgentState, reason: &str) -> bool {
         let Some(rec) = self.registry.get_mut(id) else {
@@ -465,40 +497,11 @@ impl ActorRuntime for Harness {
             self.registry.version += 1;
         }
     }
-    fn parent_escalate(&mut self, note: JMap) {
+    fn record_escalation(&mut self, note: JMap) {
         self.parent_inbox.push(note);
     }
-    fn parent_spawn_request(&mut self, req: JMap) {
+    fn enqueue_spawn_request(&mut self, req: JMap) {
         self.spawn_requests.push(req);
-    }
-    fn completion_gate(&self, id: &str) -> CompletionGate {
-        let Some(tid) = self.registry.get(id).and_then(|r| r.task_id.clone()) else {
-            return CompletionGate::default();
-        };
-        let Some(t) = self.graph.tasks.get(&tid) else {
-            return CompletionGate::default();
-        };
-        if t.verify.is_empty() {
-            return CompletionGate::default();
-        }
-        if t.verified {
-            return CompletionGate {
-                allow: true,
-                verified: true,
-                ..Default::default()
-            };
-        }
-        CompletionGate {
-            allow: false,
-            verified: false,
-            rule: "REJECT_UNVERIFIED".into(),
-            detail: format!(
-                "{} declares {} verify command(s); none has exited 0 for this task yet",
-                t.task_id.as_str(),
-                t.verify.len()
-            ),
-            task_id: Some(t.task_id.as_str().into()),
-        }
     }
     fn run_verify(&mut self, id: &str, task_id: Option<&str>) -> VerifyVerdict {
         let tid = task_id.map(|s| s.to_string()).or_else(|| {
@@ -1059,6 +1062,34 @@ fn run_stops_on_sleeping_action() {
     let turns = actor.run(&mut h, 12);
     assert_eq!(turns.len(), 1);
     assert_eq!(turns[0].action, "COMPLETE");
+}
+
+#[test]
+fn from_cognition_does_not_require_a_policy() {
+    let mut h = Harness::default();
+    working_agent(&mut h, "be_01");
+    struct Quiet;
+    impl Cognition for Quiet {
+        fn name(&self) -> &str {
+            "quiet"
+        }
+        fn fingerprint(&self) -> JMap {
+            JMap::new()
+        }
+        fn decide(
+            &mut self,
+            _o: &Observation,
+            _c: &mut dyn PolicyContext,
+        ) -> Result<Intent, CognitionError> {
+            let mut i = Intent::new();
+            i.control = Control::NOOP.into();
+            Ok(i)
+        }
+    }
+    let mut actor = AgentActor::from_cognition("be_01", Box::new(Quiet));
+    let turn = actor.run_step(&mut h);
+    assert_eq!(turn.action, "NOOP");
+    assert_eq!(actor.cognition_name(), "quiet");
 }
 
 #[test]

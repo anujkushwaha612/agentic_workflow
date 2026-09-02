@@ -14,8 +14,9 @@
 //! ```
 //!
 //! Parent, Spawn and Tools are **seams**, not residents. Spawn requests land
-//! in a queue; tool execution is behind [`ToolExecutor`]; cortex files are
-//! applied here so a later Parent does not have to own the tick loop.
+//! in a queue; tool execution is behind [`crate::tools::ToolExecutor`];
+//! cortex files enter through [`crate::control::ControlPlane`], not as
+//! tick-internal JSONL parsing.
 //!
 //! Ownership: `&mut Kernel` flows through the tick. An actor is `remove`d
 //! from the map, `run_step(self)`'d, then reinserted — no `Arc<Mutex<_>>`,
@@ -24,10 +25,13 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-use crate::actor::{ActorRuntime, AgentActor, CompletionGate, VerifyVerdict, RUNNABLE};
+use crate::actor::{
+    AgentActor, CompletionGate, RuntimeEffects, VerifyVerdict, WorldView, RUNNABLE,
+};
 use crate::bus::Bus;
 use crate::clock::Clock;
 use crate::cognition::{Cognition, ToolResultView};
+use crate::control::{ControlDecision, ControlPlane, FileControlPlane};
 use crate::graph::{CycleError, DependencyGraph, TaskSpec, TaskStatus};
 use crate::ids::{AgentId, TaskId};
 use crate::journal::{EventFilter, Journal, JournalError, JournalPath};
@@ -36,34 +40,11 @@ use crate::msg::{EventType, Message};
 use crate::policy::{is_sleeping_action, make_policy};
 use crate::registry::{emit_registered, emit_terminated, AgentRecord, AgentRegistry, SpawnBudget};
 use crate::sys::json::{parse, py_round, JMap, JValue};
+use crate::tools::{self, ToolExecutor};
 
 pub const CONFIG_FILE: &str = "kernel_config.json";
 
-// ------------------------------------------------------------------ tools seam
-
-/// Deferred M10 tool executor. Kernel never implements tool logic itself.
-pub trait ToolExecutor {
-    fn describe(&self, agent_id: &str) -> JMap;
-    fn allowed(&self, agent_id: &str) -> Vec<String>;
-    fn schemas(&self, agent_id: &str) -> Vec<JMap>;
-    fn stats(&self) -> JMap;
-    fn plan(
-        &mut self,
-        agent_id: &str,
-        calls: &[JMap],
-        task_id: Option<&str>,
-        corr: &str,
-    ) -> Vec<String>;
-    fn execute(
-        &mut self,
-        agent_id: &str,
-        tool: &str,
-        args: &JMap,
-        rid: &str,
-        task_id: Option<&str>,
-        corr: &str,
-    ) -> ToolResultView;
-}
+// ToolExecutor lives in crate::tools; Kernel only holds one.
 
 /// Per-role factory so two agents of the same role get two brains.
 /// The factory is given the agent id so fingerprints and transcripts
@@ -171,48 +152,46 @@ impl KernelOpts {
 // ------------------------------------------------------------------ kernel
 
 pub struct Kernel {
-    pub journal: Journal,
-    pub graph: DependencyGraph,
-    pub registry: AgentRegistry,
-    pub bus: Bus,
-    pub clock: Clock,
+    journal: Journal,
+    graph: DependencyGraph,
+    registry: AgentRegistry,
+    bus: Bus,
+    clock: Clock,
     actors: BTreeMap<String, AgentActor>,
-    pub artifacts: BTreeMap<String, ArtifactMeta>,
-    pub tick: i64,
-    pub task_text: String,
-    pub work_unit: f64,
-    pub default_policy: String,
-    pub role_policies: BTreeMap<String, String>,
-    pub role_overrides: BTreeMap<String, JMap>,
-    pub policy_args: JMap,
-    pub detect_deadlocks: bool,
-    pub deadlock_action: String,
-    pub auto_assign: bool,
-    pub reap: bool,
-    pub agent_subscriptions: Vec<String>,
-    pub stall_limit: i64,
-    pub stalled: bool,
-    pub log_lines: Vec<String>,
-    pub parent_inbox: Vec<JMap>,
-    pub spawn_requests: Vec<Message>,
-    pub feature_requests: Vec<JMap>,
-    pub deadlocks: Vec<Vec<String>>,
-    pub resident_loops: i64,
-    pub injected_rows: i64,
+    artifacts: BTreeMap<String, ArtifactMeta>,
+    tick: i64,
+    task_text: String,
+    work_unit: f64,
+    default_policy: String,
+    role_policies: BTreeMap<String, String>,
+    role_overrides: BTreeMap<String, JMap>,
+    policy_args: JMap,
+    detect_deadlocks: bool,
+    deadlock_action: String,
+    auto_assign: bool,
+    reap: bool,
+    agent_subscriptions: Vec<String>,
+    stall_limit: i64,
+    stalled: bool,
+    log_lines: Vec<String>,
+    parent_inbox: Vec<JMap>,
+    spawn_requests: Vec<Message>,
+    feature_requests: Vec<JMap>,
+    deadlocks: Vec<Vec<String>>,
+    resident_loops: i64,
+    injected_rows: i64,
     /// Folded spawn-request ledger (M9 Parent rehydrates from this).
-    pub request_fold: JMap,
-    pub cognition_sources: BTreeMap<String, CognitionFactory>,
+    request_fold: JMap,
+    cognition_sources: BTreeMap<String, CognitionFactory>,
     tools: Option<Box<dyn ToolExecutor>>,
     workspaces: BTreeMap<String, JMap>,
-    pub transcript_dir: Option<String>,
-    pub clock_mode: String,
-    pub clock_step: f64,
+    transcript_dir: Option<String>,
+    clock_mode: String,
+    clock_step: f64,
     root: Option<PathBuf>,
     side_anchor: Option<PathBuf>,
     trace_rel: String,
-    inject_rel: String,
-    decision_rel: String,
-    inbox_rel: String,
+    control: Option<Box<dyn ControlPlane>>,
 }
 
 impl Kernel {
@@ -267,10 +246,14 @@ impl Kernel {
             root: opts.root,
             side_anchor,
             trace_rel: opts.trace_path,
-            inject_rel: opts.inject_path,
-            decision_rel: "var/decisions.jsonl".into(),
-            inbox_rel: "var/inbox.jsonl".into(),
+            control: None,
         };
+        let mut k = k;
+        if let Some(anchor) = k.side_anchor.clone() {
+            k.control = Some(Box::new(
+                FileControlPlane::new(anchor).with_inject(opts.inject_path),
+            ));
+        }
         if let Some(p) = k.anchor(&k.trace_rel.clone()) {
             let _ = std::fs::create_dir_all(p.parent().unwrap_or(p.as_path()));
         }
@@ -279,6 +262,26 @@ impl Kernel {
 
     pub fn in_memory() -> Kernel {
         Kernel::new(KernelOpts::default()).expect("memory journal")
+    }
+
+    /// Journal is Kernel-owned; callers observe, they do not open a second one.
+    pub fn journal(&self) -> &Journal {
+        &self.journal
+    }
+
+    pub fn bind_control_plane(&mut self, plane: Box<dyn ControlPlane>) {
+        self.control = Some(plane);
+    }
+
+    pub fn apply_decision(&mut self, d: ControlDecision) {
+        match d {
+            ControlDecision::ForceState { agent_id, state } => {
+                self.transition(&agent_id, state, "cortex force_state");
+            }
+            ControlDecision::ForceTerminate { agent_id } => {
+                self.terminate_agent(&agent_id, "cortex force_terminate");
+            }
+        }
     }
 
     pub fn now(&self) -> f64 {
@@ -447,8 +450,12 @@ impl Kernel {
     pub fn bind_actor(&mut self, agent_id: &str) -> Option<&AgentActor> {
         let rec = self.registry.get(agent_id)?;
         let role = rec.role.clone();
-        let policy = self.policy_for(&role);
-        let actor = AgentActor::new(agent_id, policy);
+        let actor = if self.cognition_sources.contains_key(&role) {
+            let src = self.cognition_sources.get(&role).unwrap().make(agent_id);
+            AgentActor::from_cognition(agent_id, src)
+        } else {
+            AgentActor::new(agent_id, self.policy_for(&role))
+        };
         self.actors.insert(agent_id.to_string(), actor);
         self.bus.register_actor(agent_id);
         self.actors.get(agent_id)
@@ -1148,11 +1155,7 @@ impl Kernel {
         let mut results = Vec::new();
         let mut all_ok = !argv_lists.is_empty();
         for argv in argv_lists {
-            let mut args = JMap::new();
-            args.insert(
-                "argv".into(),
-                JValue::Arr(argv.iter().cloned().map(JValue::Str).collect()),
-            );
+            let args = tools::argv_args(&argv);
             let res = if let Some(ex) = self.tools.as_mut() {
                 ex.execute(agent_id, "run_command", &args, "", Some(&tid), "")
             } else {
@@ -1343,64 +1346,26 @@ impl Kernel {
         cycles
     }
 
-    fn apply_arena_decisions(&mut self) {
-        let path = match self.anchor(&self.decision_rel.clone()) {
-            Some(p) => p,
-            None => return,
-        };
-        if !path.exists() {
-            return;
-        }
-        let text = std::fs::read_to_string(&path).unwrap_or_default();
-        let consumed = true;
-        for line in text.lines() {
-            let line = line.trim();
-            if line.is_empty() {
-                continue;
-            }
-            let Ok(v) = parse(line) else {
-                continue;
-            };
-            let kind = v.str_or("kind", "");
-            match kind.as_str() {
-                "force_state" => {
-                    let aid = v.str_or("agent_id", "");
-                    let st = v.str_or("state", "");
-                    if let Some(to) = AgentState::parse(&st) {
-                        self.transition(&aid, to, "cortex force_state");
-                    }
-                }
-                "force_terminate" => {
-                    let aid = v.str_or("agent_id", "");
-                    self.terminate_agent(&aid, "cortex force_terminate");
-                }
-                // approve_spawn / amend: Parent (M9). Leave the file if we
-                // cannot honour them? No — unknown kinds are recorded and
-                // consumed so a stale file cannot loop. The request stays
-                // on spawn_requests for Parent.
-                _ => {}
-            }
-        }
-        if consumed {
-            let _ = std::fs::write(&path, "");
+    fn poll_control_plane(&mut self) {
+        let decisions = self
+            .control
+            .as_mut()
+            .map(|c| c.poll_decisions())
+            .unwrap_or_default();
+        for d in decisions {
+            self.apply_decision(d);
         }
     }
 
-    fn write_inbox_row(&mut self, row: &JMap) {
-        let Some(path) = self.anchor(&self.inbox_rel.clone()) else {
-            return;
-        };
-        if let Some(parent) = path.parent() {
-            let _ = std::fs::create_dir_all(parent);
+    pub fn record_escalation(&mut self, note: JMap) {
+        self.parent_inbox.push(note.clone());
+        if let Some(cp) = self.control.as_mut() {
+            cp.on_escalation(&note);
         }
-        if let Ok(mut f) = std::fs::OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(&path)
-        {
-            use std::io::Write;
-            let _ = writeln!(f, "{}", JValue::Obj(row.clone()).to_canon_string());
-        }
+    }
+
+    pub fn enqueue_spawn_request(&mut self, req: JMap) {
+        self.inject_spawn_request(req, "agent", true);
     }
 
     // --------------------------------------------------------------- run
@@ -1411,7 +1376,7 @@ impl Kernel {
             self.clock.tick();
             self.sync_now();
             self.bus.reset_tick();
-            self.apply_arena_decisions();
+            self.poll_control_plane();
             let expired = self
                 .bus
                 .expire_timeouts(&mut self.journal, &mut self.registry, self.clock.now())
@@ -1429,8 +1394,7 @@ impl Kernel {
                 );
                 note.insert("at".into(), JValue::Float(self.clock.now()));
                 note.insert("kind".into(), JValue::Str("timeout".into()));
-                self.parent_inbox.push(note.clone());
-                self.write_inbox_row(&note);
+                self.record_escalation(note);
             }
             if self.detect_deadlocks && self.deadlock_action != "off" {
                 let found = if self.deadlock_action == "resolve" {
@@ -1916,37 +1880,17 @@ impl Kernel {
         msg
     }
 
-    pub fn drain_injection_file(&mut self, consume: bool) -> i64 {
-        let Some(path) = self.anchor(&self.inject_rel.clone()) else {
-            return 0;
-        };
-        if !path.exists() {
-            return 0;
-        }
-        let text = std::fs::read_to_string(&path).unwrap_or_default();
-        let mut n = 0i64;
-        for line in text.lines() {
-            let line = line.trim();
-            if line.is_empty() {
-                continue;
-            }
-            let Ok(v) = parse(line) else {
-                continue;
-            };
-            let row = match v.get("spawn_request") {
-                Some(JValue::Obj(m)) => m.clone(),
-                _ => match v {
-                    JValue::Obj(m) => m,
-                    _ => continue,
-                },
-            };
+    pub fn drain_injection_file(&mut self, _consume: bool) -> i64 {
+        let rows = self
+            .control
+            .as_mut()
+            .map(|c| c.poll_injections())
+            .unwrap_or_default();
+        let n = rows.len() as i64;
+        for row in rows {
             self.inject_spawn_request(row, "external", true);
-            n += 1;
         }
         self.injected_rows += n;
-        if consume && n > 0 {
-            let _ = std::fs::write(&path, "");
-        }
         n
     }
 
@@ -2561,7 +2505,7 @@ fn current_open(k: &Kernel, id: &str) -> Option<TaskSpec> {
     None
 }
 
-impl ActorRuntime for Kernel {
+impl WorldView for Kernel {
     fn now(&self) -> f64 {
         self.clock.now()
     }
@@ -2724,7 +2668,10 @@ impl ActorRuntime for Kernel {
             .unwrap_or_default()
     }
     fn tool_stats(&self) -> JMap {
-        self.tools.as_ref().map(|t| t.stats()).unwrap_or_default()
+        self.tools
+            .as_ref()
+            .map(|t| t.stats())
+            .unwrap_or_else(tools::empty_stats)
     }
     fn tools_bound(&self) -> bool {
         self.tools.is_some()
@@ -2738,14 +2685,20 @@ impl ActorRuntime for Kernel {
     fn transcript_dir(&self) -> Option<String> {
         self.transcript_dir.clone()
     }
-    fn pop_inbox(&mut self, id: &str) -> Option<Message> {
-        self.bus.drain(id, Some(1)).into_iter().next()
-    }
     fn peek_inbox(&self, id: &str) -> Vec<Message> {
         self.bus.mailbox(id)
     }
     fn has_mail(&self, id: &str) -> bool {
         self.bus.mailbox_len(id) > 0
+    }
+    fn completion_gate(&self, id: &str) -> CompletionGate {
+        self.completion_gate_of(id)
+    }
+}
+
+impl RuntimeEffects for Kernel {
+    fn pop_inbox(&mut self, id: &str) -> Option<Message> {
+        self.bus.drain(id, Some(1)).into_iter().next()
     }
     fn transition(&mut self, id: &str, to: AgentState, reason: &str) -> bool {
         Kernel::transition(self, id, to, reason)
@@ -2830,15 +2783,11 @@ impl ActorRuntime for Kernel {
             self.registry.version += 1;
         }
     }
-    fn parent_escalate(&mut self, note: JMap) {
-        self.parent_inbox.push(note.clone());
-        self.write_inbox_row(&note);
+    fn record_escalation(&mut self, note: JMap) {
+        Kernel::record_escalation(self, note);
     }
-    fn parent_spawn_request(&mut self, req: JMap) {
-        self.inject_spawn_request(req, "agent", true);
-    }
-    fn completion_gate(&self, id: &str) -> CompletionGate {
-        self.completion_gate_of(id)
+    fn enqueue_spawn_request(&mut self, req: JMap) {
+        Kernel::enqueue_spawn_request(self, req);
     }
     fn run_verify(&mut self, id: &str, task_id: Option<&str>) -> VerifyVerdict {
         Kernel::run_verify(self, id, task_id)
@@ -2866,12 +2815,7 @@ impl ActorRuntime for Kernel {
     ) -> ToolResultView {
         match self.tools.as_mut() {
             Some(ex) => ex.execute(id, tool, args, rid, task_id, correlation_id),
-            None => ToolResultView {
-                tool: tool.into(),
-                ok: false,
-                refused: "REFUSE_NO_EXECUTOR".into(),
-                ..Default::default()
-            },
+            None => tools::refuse_unbound(tool),
         }
     }
     fn poll_hit(&mut self, id: &str) -> Result<i64, crate::bus::BusError> {

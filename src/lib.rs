@@ -3,9 +3,9 @@
 //! Crate layout mirrors the approved architecture (RUST_MIGRATION_PLAN.md §8):
 //!
 //! * engine modules ([`clock`], [`msg`], [`lifecycle`], [`journal`], [`graph`],
-//!   [`registry`], [`bus`], [`policy`], [`cognition`], [`actor`], [`spawn`],
-//!   [`parent`], [`kernel`], [`tools`]) know nothing about projects, prompts or
-//!   CLIs;
+//!   [`registry`], [`bus`], [`policy`], [`cognition`], [`actor`], [`kernel`],
+//!   [`control`], [`tools`]) know nothing about projects, prompts or
+//!   CLIs. Parent/Spawn land in later milestones;
 //! * product modules ([`product`]) are the launcher layer (`arena-code`,
 //!   project workspaces, the coding agent, doctor);
 //! * nothing in the engine imports from the product — the dependency is
@@ -20,6 +20,7 @@ pub mod actor;
 pub mod bus;
 pub mod clock;
 pub mod cognition;
+pub mod control;
 pub mod graph;
 pub mod ids;
 pub mod journal;
@@ -29,6 +30,7 @@ pub mod msg;
 pub mod policy;
 pub mod registry;
 pub mod sys;
+pub mod tools;
 // modules added incrementally as milestones land
 
 /// Runtime version of the product tier (`arena-code`).

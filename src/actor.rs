@@ -37,7 +37,7 @@ use crate::graph::TaskSpec;
 use crate::ids::TaskId;
 use crate::lifecycle::AgentState;
 use crate::msg::{EventType, Message};
-use crate::policy::{is_sleeping_action, Act, Action, Policy, PolicyContext};
+use crate::policy::{is_sleeping_action, Policy, PolicyContext};
 use crate::sys::json::{JMap, JValue};
 
 // ----------------------------------------------------------------- constants
@@ -109,12 +109,8 @@ impl Turn {
     }
 }
 
-/// The entire surface an actor may use to read and (through sanctioned
-/// methods) mutate runtime state.
-///
-/// Kernel is the only production implementor. Tests use a harness. Cognition
-/// never sees this trait — it sees [`PolicyContext`] / [`Observation`].
-pub trait ActorRuntime {
+/// Read-only world an actor may observe. Cognition never sees this trait.
+pub trait WorldView {
     fn now(&self) -> f64;
     fn tick(&self) -> i64;
     fn work_unit(&self) -> f64;
@@ -135,7 +131,6 @@ pub trait ActorRuntime {
     fn consumed_ready(&self, id: &str) -> Vec<String>;
     fn roster_roles(&self) -> Vec<String>;
     fn producer_roles(&self, artifact: &str) -> Vec<String>;
-    /// artifact → producer roles (so PolicyContext can answer without a live borrow).
     fn producer_index(&self) -> std::collections::BTreeMap<String, Vec<String>>;
     fn workspace_view(&self, id: &str) -> JMap;
     fn allowed_tools(&self, id: &str) -> Vec<String>;
@@ -144,11 +139,16 @@ pub trait ActorRuntime {
     fn tools_bound(&self) -> bool;
     fn cognition_record(&self, id: &str) -> JMap;
     fn transcript_dir(&self) -> Option<String>;
-
-    fn pop_inbox(&mut self, id: &str) -> Option<Message>;
     fn peek_inbox(&self, id: &str) -> Vec<Message>;
     fn has_mail(&self, id: &str) -> bool;
+    fn completion_gate(&self, id: &str) -> CompletionGate;
+}
 
+/// Sanctioned mutations. Parent is not a method here — escalation and
+/// spawn requests are runtime effects Kernel records for a collaborator
+/// above it to consume.
+pub trait RuntimeEffects {
+    fn pop_inbox(&mut self, id: &str) -> Option<Message>;
     fn transition(&mut self, id: &str, to: AgentState, reason: &str) -> bool;
     fn journal_emit(
         &mut self,
@@ -176,9 +176,8 @@ pub trait ActorRuntime {
     fn mark_task_done(&mut self, tid: &str, finished_at: f64);
     fn mark_task_verified(&mut self, tid: &str);
     fn advance_backlog(&mut self, id: &str, finished_task: &str);
-    fn parent_escalate(&mut self, note: JMap);
-    fn parent_spawn_request(&mut self, req: JMap);
-    fn completion_gate(&self, id: &str) -> CompletionGate;
+    fn record_escalation(&mut self, note: JMap);
+    fn enqueue_spawn_request(&mut self, req: JMap);
     fn run_verify(&mut self, id: &str, task_id: Option<&str>) -> VerifyVerdict;
     fn plan_tools(
         &mut self,
@@ -199,6 +198,11 @@ pub trait ActorRuntime {
     fn poll_hit(&mut self, id: &str) -> Result<i64, crate::bus::BusError>;
     fn bus_resolve(&mut self, condition: &str, reason: &str);
 }
+
+/// Combined surface Kernel implements. Tests implement the two halves;
+/// the blanket impl makes them an [`ActorRuntime`].
+pub trait ActorRuntime: WorldView + RuntimeEffects {}
+impl<T: WorldView + RuntimeEffects> ActorRuntime for T {}
 
 // --------------------------------------------------------------- actor ctx
 
@@ -417,6 +421,24 @@ impl AgentActor {
         let agent_id = agent_id.into();
         let policy_class = policy.class_name().to_string();
         let cognition = Box::new(PolicyCognition::new(policy, &agent_id));
+        AgentActor::assemble(agent_id, policy_class, cognition)
+    }
+
+    /// Parent / factory path: an agent whose brain is not a policy.
+    pub fn from_cognition(
+        agent_id: impl Into<String>,
+        cognition: Box<dyn Cognition>,
+    ) -> AgentActor {
+        let agent_id = agent_id.into();
+        let policy_class = cognition.name().to_string();
+        AgentActor::assemble(agent_id, policy_class, cognition)
+    }
+
+    fn assemble(
+        agent_id: String,
+        policy_class: String,
+        cognition: Box<dyn Cognition>,
+    ) -> AgentActor {
         AgentActor {
             agent_id,
             policy_class,
@@ -640,8 +662,14 @@ impl AgentActor {
                 .collect();
         }
 
-        let action = match self.intent_to_action(&intent, &ctx) {
-            Ok(a) => a,
+        self.steps_run += 1;
+        self.rec_progress(ctx.rt);
+        // Apply BEFORE recording last_action. Python set last_action first,
+        // which made the "repeated COMPLETE with no bound task" guard fire on
+        // the *first* no-task complete (the comment in actor.py describes the
+        // opposite intent). Classification: CHANGE — honour the comment.
+        match self.apply_intent(&mut ctx, &intent, msg.as_ref(), &mut outcome) {
+            Ok(()) => {}
             Err(CognitionError::Capability(e)) => {
                 self.errors.push(e.clone());
                 let tid = rec_task_id(ctx.rt, &self.agent_id);
@@ -665,18 +693,8 @@ impl AgentActor {
                 outcome.detail = e;
                 return outcome;
             }
-        };
-
-        self.steps_run += 1;
-        self.rec_progress(ctx.rt);
-        // Apply BEFORE recording last_action. Python set last_action first,
-        // which made the "repeated COMPLETE with no bound task" guard fire on
-        // the *first* no-task complete (the comment in actor.py describes the
-        // opposite intent). Classification: CHANGE — honour the comment.
-        outcome.action = action.act.as_str().to_string();
-        outcome.detail = action.reason.clone();
-        self.apply_action(ctx.rt, &action, msg.as_ref(), &mut outcome);
-        self.last_action = action.act.as_str().to_string();
+        }
+        self.last_action = outcome.action.clone();
 
         let state = ctx.rt.agent_state(&self.agent_id);
         if matches!(
@@ -756,12 +774,16 @@ impl AgentActor {
         results
     }
 
-    fn intent_to_action(
-        &self,
+    fn apply_intent(
+        &mut self,
+        ctx: &mut ActorCtx<'_>,
         intent: &Intent,
-        ctx: &ActorCtx<'_>,
-    ) -> Result<Action, CognitionError> {
+        msg: Option<&Message>,
+        outcome: &mut Turn,
+    ) -> Result<(), CognitionError> {
         let c = intent.control.as_str();
+        let reason = intent.reason.as_str();
+
         if c == Control::WAIT {
             let cond = if intent.wait_for.is_empty() {
                 ctx.all_unmet.first().cloned().unwrap_or_default()
@@ -769,98 +791,92 @@ impl AgentActor {
                 intent.wait_for.clone()
             };
             if cond.is_empty() {
-                return Ok(Action {
-                    act: Act::Noop,
-                    reason: if intent.reason.is_empty() {
-                        "nothing to wait on".into()
-                    } else {
-                        intent.reason.clone()
-                    },
-                    ..Default::default()
-                });
+                outcome.action = "NOOP".into();
+                outcome.detail = if reason.is_empty() {
+                    "nothing to wait on".into()
+                } else {
+                    reason.into()
+                };
+                let wu = ctx.rt.work_unit();
+                ctx.rt.bump_work_done(&self.agent_id, wu);
+                return Ok(());
             }
             let cond = if cond.contains(':') {
                 cond
             } else {
                 format!("artifact:{cond}")
             };
-            return Ok(Action::wait(
-                &cond,
-                if intent.reason.is_empty() {
-                    "waiting"
-                } else {
-                    &intent.reason
-                },
-                None,
-            ));
-        }
-        if c == Control::ESCALATE {
-            let mut extra = JMap::new();
-            if let Some(JValue::Obj(e)) = intent.publish.get("extra") {
-                extra = e.clone();
+            let tid = rec_task_id(ctx.rt, &self.agent_id);
+            let corr = msg
+                .map(|m| m.correlation_id.as_str().to_string())
+                .unwrap_or_default();
+            ctx.rt
+                .wait_for(&self.agent_id, &cond, tid.as_deref(), &corr, None);
+            if matches!(
+                ctx.rt.agent_state(&self.agent_id),
+                Some(AgentState::Idle)
+                    | Some(AgentState::Working)
+                    | Some(AgentState::Escalated)
+                    | Some(AgentState::Blocked)
+                    | Some(AgentState::Paused)
+            ) {
+                self.transition(
+                    ctx.rt,
+                    AgentState::WaitingForDependency,
+                    if reason.is_empty() { "waiting" } else { reason },
+                );
             }
-            return Ok(Action::escalate_with(
-                if intent.reason.is_empty() {
+            outcome.action = "WAIT".into();
+            outcome.detail = format!("parked on {cond}");
+            return Ok(());
+        }
+
+        if c == Control::ESCALATE {
+            let extra = match intent.publish.get("extra") {
+                Some(JValue::Obj(e)) => e.clone(),
+                _ => JMap::new(),
+            };
+            self.transition(
+                ctx.rt,
+                AgentState::Escalated,
+                if reason.is_empty() {
                     "escalation"
                 } else {
-                    &intent.reason
+                    reason
                 },
-                extra,
-            ));
+            );
+            let tid = rec_task_id(ctx.rt, &self.agent_id);
+            let mut note = JMap::new();
+            note.insert("agent".into(), JValue::Str(self.agent_id.clone()));
+            note.insert(
+                "task_id".into(),
+                tid.clone().map(JValue::Str).unwrap_or(JValue::Null),
+            );
+            note.insert("kind".into(), JValue::Str("escalation".into()));
+            note.insert("reason".into(), JValue::Str(reason.to_string()));
+            note.insert("extra".into(), JValue::Obj(extra));
+            note.insert("at".into(), JValue::Float(ctx.rt.now()));
+            ctx.rt.record_escalation(note);
+            outcome.action = "ESCALATE".into();
+            outcome.detail = "escalated to parent".into();
+            return Ok(());
         }
-        if c == Control::COMPLETE {
-            let arts = match intent.publish.get("artifacts") {
-                Some(JValue::Arr(items)) => items.clone(),
-                _ => vec![],
-            };
-            let mut extra = JMap::new();
-            extra.insert("artifacts".into(), JValue::Arr(arts));
-            return Ok(Action::complete_with(
-                if intent.reason.is_empty() {
-                    "complete"
-                } else {
-                    &intent.reason
-                },
-                extra,
-            ));
-        }
-        if c == Control::VERIFY {
-            let mut extra = JMap::new();
-            extra.insert("verify_now".into(), JValue::Bool(true));
-            extra.insert("artifacts".into(), JValue::Arr(vec![]));
-            extra.insert("intent_think".into(), JValue::Str(intent.think.clone()));
-            return Ok(Action {
-                act: Act::Complete,
-                reason: if intent.reason.is_empty() {
+
+        if c == Control::COMPLETE || c == Control::VERIFY {
+            outcome.action = "COMPLETE".into();
+            outcome.detail = if reason.is_empty() {
+                if c == Control::VERIFY {
                     "verify then complete".into()
                 } else {
-                    intent.reason.clone()
-                },
-                extra,
-                ..Default::default()
-            });
+                    "complete".into()
+                }
+            } else {
+                reason.into()
+            };
+            self.complete(ctx.rt, intent, c == Control::VERIFY);
+            return Ok(());
         }
-        if c == Control::PUBLISH {
-            let m = intent.msg.clone().unwrap_or_else(|| {
-                ctx.self_msg(
-                    EventType::StatusUpdate,
-                    if intent.reason.is_empty() {
-                        "update"
-                    } else {
-                        &intent.reason
-                    },
-                    JMap::new(),
-                )
-            });
-            return Ok(Action::publish(
-                m,
-                if intent.reason.is_empty() {
-                    "publish"
-                } else {
-                    &intent.reason
-                },
-            ));
-        }
+
         if c == Control::SPAWN_REQUEST {
             let Some(m) = intent.msg.clone() else {
                 return Err(CognitionError::Capability(
@@ -870,143 +886,77 @@ impl AgentActor {
                         .into(),
                 ));
             };
-            return Ok(Action::publish(
-                m,
-                if intent.reason.is_empty() {
-                    "spawn request"
-                } else {
-                    &intent.reason
-                },
-            ));
+            self.publish_outbound(ctx.rt, m, outcome);
+            outcome.action = "PUBLISH".into();
+            return Ok(());
         }
+
+        if c == Control::PUBLISH {
+            let m = match &intent.msg {
+                Some(m) => m.clone(),
+                None => ctx.self_msg(
+                    EventType::StatusUpdate,
+                    if reason.is_empty() { "update" } else { reason },
+                    JMap::new(),
+                ),
+            };
+            self.publish_outbound(ctx.rt, m, outcome);
+            outcome.action = "PUBLISH".into();
+            return Ok(());
+        }
+
         if c == Control::NOOP {
-            return Ok(Action {
-                act: Act::Noop,
-                reason: if intent.reason.is_empty() {
-                    "noop".into()
-                } else {
-                    intent.reason.clone()
-                },
-                ..Default::default()
-            });
+            let wu = ctx.rt.work_unit();
+            ctx.rt.bump_work_done(&self.agent_id, wu);
+            outcome.action = "NOOP".into();
+            outcome.detail = if reason.is_empty() {
+                "noop".into()
+            } else {
+                reason.into()
+            };
+            return Ok(());
         }
-        if !intent.reason.is_empty() {
-            return Ok(Action::proceed(&intent.reason));
-        }
-        Ok(Action::proceed("worked"))
+
+        let wu = ctx.rt.work_unit();
+        ctx.rt.bump_work_done(&self.agent_id, wu);
+        outcome.action = "PROCEED".into();
+        outcome.detail = if reason.is_empty() {
+            "proceeded".into()
+        } else {
+            reason.into()
+        };
+        Ok(())
     }
 
-    fn apply_action(
-        &mut self,
-        rt: &mut dyn ActorRuntime,
-        action: &Action,
-        msg: Option<&Message>,
-        outcome: &mut Turn,
-    ) {
-        match action.act {
-            Act::Wait => {
-                let tid = rec_task_id(rt, &self.agent_id);
-                let corr = msg
-                    .map(|m| m.correlation_id.as_str().to_string())
-                    .unwrap_or_default();
-                rt.wait_for(
-                    &self.agent_id,
-                    &action.condition,
-                    tid.as_deref(),
-                    &corr,
-                    action.timeout,
-                );
-                if matches!(
-                    rt.agent_state(&self.agent_id),
-                    Some(AgentState::Idle)
-                        | Some(AgentState::Working)
-                        | Some(AgentState::Escalated)
-                        | Some(AgentState::Blocked)
-                        | Some(AgentState::Paused)
-                ) {
-                    self.transition(
-                        rt,
-                        AgentState::WaitingForDependency,
-                        if action.reason.is_empty() {
-                            "waiting"
-                        } else {
-                            &action.reason
-                        },
-                    );
-                }
-                outcome.detail = format!("parked on {}", action.condition);
-            }
-            Act::Escalate => {
-                self.transition(
-                    rt,
-                    AgentState::Escalated,
-                    if action.reason.is_empty() {
-                        "escalation"
-                    } else {
-                        &action.reason
-                    },
-                );
-                let tid = rec_task_id(rt, &self.agent_id);
-                let mut note = JMap::new();
-                note.insert("agent".into(), JValue::Str(self.agent_id.clone()));
-                note.insert(
-                    "task_id".into(),
-                    tid.clone().map(JValue::Str).unwrap_or(JValue::Null),
-                );
-                note.insert("kind".into(), JValue::Str("escalation".into()));
-                note.insert("reason".into(), JValue::Str(action.reason.clone()));
-                note.insert("extra".into(), JValue::Obj(action.extra.clone()));
-                note.insert("at".into(), JValue::Float(rt.now()));
-                rt.parent_escalate(note);
-                outcome.detail = "escalated to parent".into();
-            }
-            Act::Complete => self.complete(rt, action),
-            Act::Publish if action.msg.is_some() => {
-                let m = action.msg.clone().expect("checked");
-                if m.msg_type == EventType::SpawnAgentRequest {
-                    let mut req = m.payload.clone();
-                    req.insert("from".into(), JValue::Str(self.agent_id.clone()));
-                    req.insert(
-                        "task_id".into(),
-                        m.task_id
-                            .as_ref()
-                            .map(|t| JValue::Str(t.as_str().into()))
-                            .unwrap_or(JValue::Null),
-                    );
-                    req.insert(
-                        "correlation_id".into(),
-                        JValue::Str(m.correlation_id.as_str().into()),
-                    );
-                    req.insert("mid".into(), JValue::Str(m.mid.clone()));
-                    rt.parent_spawn_request(req);
-                }
-                let detail = format!("{} -> {}", m.msg_type.as_str(), m.to_actor.as_str());
-                rt.publish(m);
-                rt.bump_msgs_sent(&self.agent_id);
-                outcome.detail = detail;
-            }
-            _ => {
-                let wu = rt.work_unit();
-                rt.bump_work_done(&self.agent_id, wu);
-                outcome.detail = if action.reason.is_empty() {
-                    "proceeded".into()
-                } else {
-                    action.reason.clone()
-                };
-            }
+    fn publish_outbound(&mut self, rt: &mut dyn ActorRuntime, m: Message, outcome: &mut Turn) {
+        if m.msg_type == EventType::SpawnAgentRequest {
+            let mut req = m.payload.clone();
+            req.insert("from".into(), JValue::Str(self.agent_id.clone()));
+            req.insert(
+                "task_id".into(),
+                m.task_id
+                    .as_ref()
+                    .map(|t| JValue::Str(t.as_str().into()))
+                    .unwrap_or(JValue::Null),
+            );
+            req.insert(
+                "correlation_id".into(),
+                JValue::Str(m.correlation_id.as_str().into()),
+            );
+            req.insert("mid".into(), JValue::Str(m.mid.clone()));
+            rt.enqueue_spawn_request(req);
         }
+        let detail = format!("{} -> {}", m.msg_type.as_str(), m.to_actor.as_str());
+        rt.publish(m);
+        rt.bump_msgs_sent(&self.agent_id);
+        outcome.detail = detail;
     }
 
-    fn complete(&mut self, rt: &mut dyn ActorRuntime, action: &Action) {
+    fn complete(&mut self, rt: &mut dyn ActorRuntime, intent: &Intent, verify_now: bool) {
         let rec_tid = rec_task_id(rt, &self.agent_id);
         let task = rec_tid.as_deref().and_then(|t| rt.task_by_id(t));
         let mut gate = rt.completion_gate(&self.agent_id);
         if !gate.allow {
-            let ran = action
-                .extra
-                .get("verify_now")
-                .and_then(JValue::as_bool)
-                .unwrap_or(false);
             let verdict = if rt.tools_bound() {
                 rt.run_verify(&self.agent_id, gate.task_id.as_deref())
             } else {
@@ -1019,7 +969,7 @@ impl AgentActor {
                 gate.allow = true;
                 gate.verified = true;
             } else {
-                let extra = if ran {
+                let extra = if verify_now {
                     " (verify re-run by the runtime and it still failed)"
                 } else {
                     ""
@@ -1078,7 +1028,7 @@ impl AgentActor {
                 rt.mark_task_verified(t.task_id.as_str());
             }
         }
-        if task.is_none() && self.last_action == Act::Complete.as_str() {
+        if task.is_none() && self.last_action == "COMPLETE" {
             self.errors
                 .push("ignoring repeated COMPLETE with no bound task".into());
             return;
@@ -1096,7 +1046,7 @@ impl AgentActor {
             return;
         }
         let task = task.expect("checked");
-        let arts: Vec<String> = match action.extra.get("artifacts") {
+        let arts: Vec<String> = match intent.publish.get("artifacts") {
             Some(JValue::Arr(items)) if !items.is_empty() => items
                 .iter()
                 .filter_map(|v| v.as_str().map(|s| s.to_string()))

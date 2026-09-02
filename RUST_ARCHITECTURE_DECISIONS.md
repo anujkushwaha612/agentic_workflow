@@ -223,8 +223,41 @@ PAUSED is not.
 
 ---
 
+## ADR-014 — Alignment: Intent is the apply IR; Parent is above Kernel
+
+**Was:** Actor mapped `Intent` → `Action` → `apply_action`. Kernel parsed
+`var/decisions.jsonl` / `var/inject.jsonl` inside the tick and named
+`parent_escalate` / `parent_spawn_request` on `ActorRuntime`. Kernel
+fields were `pub`. `AgentActor::new` required a `Policy`.
+
+**Architecture:** Cognition proposes an `Intent`. The runtime validates
+and applies it. `Action` exists only inside `PolicyCognition`. Parent
+is a Kernel collaborator, not an actor method. Cortex/inject/inbox
+files are a `ControlPlane` adapter, not Kernel internals.
+
+**Rust:**
+1. `AgentActor::apply_intent` executes a validated `Intent`. Turn
+   action strings (`WAIT`/`COMPLETE`/`PUBLISH`/`ESCALATE`/`NOOP`/`PROCEED`)
+   stay the sleeping-action contract.
+2. `WorldView` (reads) + `RuntimeEffects` (mutations).
+   `ActorRuntime` is the blanket combination. Effects are
+   `record_escalation` / `enqueue_spawn_request`.
+3. `ControlPlane` + `FileControlPlane`. Disk kernels bind the file
+   adapter at construction (`bind_control_plane` replaces it). Tick
+   calls `poll_decisions` then `apply_decision`. Kernel fields are
+   private; `journal()` is the observer accessor.
+4. `AgentActor::from_cognition` is the non-policy constructor. Kernel
+   `bind_actor` uses it when a role factory is registered.
+5. `ToolExecutor` lives in `tools`. Unbound execute is
+   `REFUSE_NO_EXECUTOR`.
+
+**Classification:** RESTRUCTURE (pipeline IR and seams). Apply
+semantics PRESERVE.
+
+---
+
 ## Not in this milestone (still)
 
-Parent, Spawn execution, Tools, product/`arena-code`, Kanban, external
-LLM providers, ArenaCognition, ZeroMQ. Kernel exposes the seams so
-those layers plug in without rewriting Actor or Kernel.
+Parent, Spawn execution, Tools implementation, product/`arena-code`,
+Kanban, external LLM providers, ArenaCognition, ZeroMQ. Kernel exposes
+the seams so those layers plug in without rewriting Actor or Kernel.
