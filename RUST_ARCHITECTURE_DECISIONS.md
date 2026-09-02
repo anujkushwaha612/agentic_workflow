@@ -291,8 +291,7 @@ re-approve spent rids.
 per-agent cognition, quiet recovery purity, worker cap ≠ agent count.
 **REFACTOR:** `submit`/`schedule`/`assign`, ControlPlane spawn/amend,
 journal fold of spawn rejects, ledger rid on rehydrate.
-**DEFER:** real Tools, workspace/Git, LLM providers, ArenaCognition,
-ZeroMQ, Kanban, arena-code (M10+).
+**DEFER:** LLM providers, ArenaCognition, ZeroMQ, Kanban, arena-code.
 
 **Classification:** RESTRUCTURE (ownership) + PRESERVE (funnel
 semantics) + CHANGE (recovery rid, plan-cycle rollback, SPAWN_REJECTED
@@ -300,8 +299,49 @@ fold).
 
 ---
 
+## ADR-016 — M10 real tool path
+
+**Python:** `Executor.kernel` is a live pointer; tools journal through
+it; `args_digest` uses `repr(args)`.
+
+**Architecture:** Tools are a Kernel collaborator. Cognition never
+opens a file or spawns a process. Jail is the only path to bytes.
+`TOOL_CALL` is journalled before the effect. Refusals are results.
+Verification is a `run_command` through the same jail; empty verify
+is not a pass.
+
+**Rust:**
+1. `src/tools/{mod,jail,exec,proc,redact}.rs`. No Kernel pointer on
+   `Executor`.
+2. 13-tool table. Unbound execute is `REFUSE_NO_EXECUTOR`.
+3. Jail: lexical + realpath, write-at-root refuse, `.arena`/`.git`
+   protected *before* prefix grants (so a protected path is never
+   reported as a mere allocation miss).
+4. Argv-only run; NEVER_RUN / egress host / shell-meta refusals;
+   PATH miss = exit 127.
+5. Atomic write (tmp + rename). `edit_file` 0-match =
+   `REFUSE_EDIT_TARGET_MISSING`.
+6. Clean `commit` = `ok:false`, `noop=true`. Git author/committer
+   env is sandbox-local (`arena@local`); `GIT_TERMINAL_PROMPT=0`.
+7. Kernel `plan_tools` journals `TOOL_CALL` then `execute_tool`
+   runs. `publish_artifact` returns `_effect`; Kernel applies it.
+8. `run_verify` goes through `execute_tool("run_command", …)`.
+
+**KEEP:** 13 tools, jail §6.8, journal-before-effect, refusals as
+results, Intent/WorldView/RuntimeEffects/Parent funnel.
+**CHANGE:** git author env; `args_digest` is not Python `repr`
+parity; protected-path check precedes prefix; empty jail grants
+refuse (`REFUSE_NO_GRANT`) rather than allow-all.
+**DEFER:** product/`arena-code`, LLM, Kanban, ZeroMQ, CodingAgent.
+
+**Classification:** RESTRUCTURE (no Executor→Kernel pointer) +
+PRESERVE (jail + 13 tools + verify-through-tools) + CHANGE (git
+identity, grant-empty, protected-before-prefix).
+
+---
+
 ## Not in this milestone (still)
 
-Tools implementation, product/`arena-code`, Kanban, external LLM
-providers, ArenaCognition, ZeroMQ. Kernel exposes the seams so those
-layers plug in without rewriting Actor or Parent.
+product/`arena-code` launcher, Kanban, external LLM providers,
+ArenaCognition, ZeroMQ. Kernel exposes the seams so those layers
+plug in without rewriting Actor, Parent, or Tools.

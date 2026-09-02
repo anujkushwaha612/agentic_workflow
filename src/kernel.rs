@@ -41,7 +41,7 @@ use crate::policy::{is_sleeping_action, make_policy};
 use crate::registry::{emit_registered, emit_terminated, AgentRecord, AgentRegistry, SpawnBudget};
 use crate::spawn::SpawnRequest;
 use crate::sys::json::{parse, py_round, JMap, JValue};
-use crate::tools::{self, ToolExecutor};
+use crate::tools::{self, Executor, GitBind, Jail, ToolExecutor};
 
 pub const CONFIG_FILE: &str = "kernel_config.json";
 
@@ -593,7 +593,109 @@ impl Kernel {
         self.cognition_sources.insert(role.to_string(), factory);
     }
 
-    /// Record a workspace bind. Does not create an executor (M10).
+    /// Give an agent a workspace it is jailed to, and create the executor if needed.
+    ///
+    /// `WORKSPACE_BOUND` is journalled after the agent exists. The executor
+    /// never holds a Kernel pointer; git roots live on the executor.
+    pub fn bind_tools(
+        &mut self,
+        agent_id: &str,
+        root: &Path,
+        writes: &[&str],
+        reads: &[&str],
+        allowed: Option<&[&str]>,
+        git: GitBind,
+    ) {
+        if self.tools.is_none() {
+            let mut ex = Executor::new();
+            if let Some(anchor) = &self.side_anchor {
+                ex.set_logs_dir(Some(anchor.join("logs")));
+            }
+            self.tools = Some(Box::new(ex));
+        }
+        let jail = Jail::new(root, writes, reads, agent_id);
+        let git_root = match &git {
+            GitBind::None => None,
+            GitBind::Jail => Some(root.to_path_buf()),
+            GitBind::Path(p) => Some(p.clone()),
+        };
+        if let Some(ex) = self.tools.as_mut() {
+            let allowed = allowed.map(|a| a.iter().map(|s| (*s).to_string()).collect());
+            ex.bind_agent(agent_id, jail, allowed, git_root);
+        }
+        self.bind_workspace(agent_id, &root.to_string_lossy(), writes, reads);
+    }
+
+    pub fn git_root_of(&self, agent_id: &str) -> Option<PathBuf> {
+        self.tools.as_ref().and_then(|t| t.git_root(agent_id))
+    }
+
+    /// Give the agent's tree a repository, through the tool path.
+    /// Journalled as TOOL_CALL / TOOL_RESULT with `tool="ensure_git"`.
+    pub fn ensure_git(&mut self, agent_id: &str) -> JMap {
+        let mut out = JMap::new();
+        let Some(root) = self.git_root_of(agent_id) else {
+            out.insert("ok".into(), JValue::Bool(false));
+            out.insert("detail".into(), JValue::Str("no git root bound".into()));
+            return out;
+        };
+        if root.join(".git").exists() {
+            out.insert("ok".into(), JValue::Bool(true));
+            out.insert("existed".into(), JValue::Bool(true));
+            return out;
+        }
+        if crate::tools::which("git").is_none() {
+            out.insert("ok".into(), JValue::Bool(false));
+            out.insert(
+                "detail".into(),
+                JValue::Str("git is not installed in this environment".into()),
+            );
+            return out;
+        }
+        let mut call = JMap::new();
+        call.insert("tool".into(), JValue::Str("ensure_git".into()));
+        call.insert(
+            "args".into(),
+            JValue::Obj(tools::argv_args(&["git".into(), "init".into()])),
+        );
+        let rids = self.plan_tools(agent_id, &[call], None, "");
+        let rid = rids.first().cloned().unwrap_or_default();
+        let proc = crate::tools::git_init(&root);
+        if let Some(ex) = self.tools.as_mut() {
+            ex.bump_executions();
+        }
+        let ok = proc.0 == 0;
+        let mut fields = JMap::new();
+        fields.insert("tool".into(), JValue::Str("ensure_git".into()));
+        fields.insert("agent_id".into(), JValue::Str(agent_id.into()));
+        fields.insert("ok".into(), JValue::Bool(ok));
+        fields.insert("exit_code".into(), JValue::Int(if ok { 0 } else { 1 }));
+        fields.insert(
+            "stdout".into(),
+            JValue::Str(proc.1.chars().take(400).collect()),
+        );
+        fields.insert(
+            "stderr".into(),
+            JValue::Str(proc.2.chars().take(400).collect()),
+        );
+        let mut data = JMap::new();
+        data.insert("cwd".into(), JValue::Str(root.to_string_lossy().into()));
+        fields.insert("data".into(), JValue::Obj(data));
+        fields.insert("rid".into(), JValue::Str(rid));
+        self.emit(
+            EventType::ToolResult,
+            agent_id,
+            "kernel",
+            &format!("ensure_git -> {}", if ok { "ok" } else { "failed" }),
+            fields,
+            None,
+        );
+        out.insert("ok".into(), JValue::Bool(ok));
+        out.insert("existed".into(), JValue::Bool(false));
+        out
+    }
+
+    /// Record a workspace bind. Journalled once; `bind_tools` calls this.
     pub fn bind_workspace(&mut self, agent_id: &str, root: &str, writes: &[&str], reads: &[&str]) {
         let mut m = JMap::new();
         m.insert("root".into(), JValue::Str(root.into()));
@@ -1143,12 +1245,8 @@ impl Kernel {
         let mut all_ok = !argv_lists.is_empty();
         for argv in argv_lists {
             let args = tools::argv_args(&argv);
-            let res = if let Some(ex) = self.tools.as_mut() {
-                ex.execute(agent_id, "run_command", &args, "", Some(&tid), "")
-            } else {
-                all_ok = false;
-                break;
-            };
+            let res =
+                Kernel::execute_tool(self, agent_id, "run_command", &args, "", Some(&tid), "");
             all_ok = all_ok && res.ok;
             let mut row = JMap::new();
             row.insert("tool".into(), JValue::Str(res.tool));
@@ -2473,6 +2571,101 @@ impl Kernel {
         }
         Ok(k)
     }
+
+    pub fn plan_tools(
+        &mut self,
+        id: &str,
+        calls: &[JMap],
+        task_id: Option<&str>,
+        correlation_id: &str,
+    ) -> Vec<String> {
+        let rids = match self.tools.as_mut() {
+            Some(ex) => ex.plan(id, calls, task_id, correlation_id),
+            None => tools::placeholder_rids(calls.len()),
+        };
+        for (i, call) in calls.iter().enumerate() {
+            let tool = call
+                .get("tool")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+            let args = match call.get("args") {
+                Some(JValue::Obj(m)) => m.clone(),
+                _ => JMap::new(),
+            };
+            let rid = rids.get(i).cloned().unwrap_or_default();
+            let mut fields = JMap::new();
+            fields.insert("tool".into(), JValue::Str(tool.clone()));
+            fields.insert("args".into(), JValue::Obj(args));
+            fields.insert("rid".into(), JValue::Str(rid));
+            fields.insert("agent_id".into(), JValue::Str(id.into()));
+            if !correlation_id.is_empty() {
+                fields.insert("correlation_id".into(), JValue::Str(correlation_id.into()));
+            }
+            self.emit(
+                EventType::ToolCall,
+                id,
+                "kernel",
+                &format!("{tool} planned"),
+                fields,
+                task_id,
+            );
+        }
+        rids
+    }
+
+    pub fn execute_tool(
+        &mut self,
+        id: &str,
+        tool: &str,
+        args: &JMap,
+        rid: &str,
+        task_id: Option<&str>,
+        correlation_id: &str,
+    ) -> ToolResultView {
+        let mut res = match self.tools.as_mut() {
+            Some(ex) => ex.execute(id, tool, args, rid, task_id, correlation_id),
+            None => tools::refuse_unbound(tool),
+        };
+        if res.rid.is_empty() {
+            res.rid = rid.to_string();
+        }
+        if res.ok
+            && res.tool == "publish_artifact"
+            && res.data.get("_effect").and_then(|v| v.as_str()) == Some("publish_artifact")
+        {
+            if let Some(name) = res.data.get("artifact").and_then(|v| v.as_str()) {
+                let name = name.to_string();
+                Kernel::publish_artifact(self, &name, id, task_id);
+            }
+        }
+        let mut fields = JMap::new();
+        fields.insert("tool".into(), JValue::Str(res.tool.clone()));
+        fields.insert("agent_id".into(), JValue::Str(id.into()));
+        fields.insert("rid".into(), JValue::Str(res.rid.clone()));
+        fields.insert("ok".into(), JValue::Bool(res.ok));
+        if let Some(e) = res.exit_code {
+            fields.insert("exit_code".into(), JValue::Int(e));
+        }
+        if !res.refused.is_empty() {
+            fields.insert("code".into(), JValue::Str(res.refused.clone()));
+        }
+        if !correlation_id.is_empty() {
+            fields.insert("correlation_id".into(), JValue::Str(correlation_id.into()));
+        }
+        let etype = if res.refused.is_empty() {
+            EventType::ToolResult
+        } else {
+            EventType::ToolRefused
+        };
+        let body = if res.refused.is_empty() {
+            format!("{} -> {}", res.tool, if res.ok { "ok" } else { "failed" })
+        } else {
+            format!("{}: {}", res.tool, res.refused)
+        };
+        self.emit(etype, id, "kernel", &body, fields, task_id);
+        res
+    }
 }
 
 fn spawn_request_from_fold(e: &JValue) -> SpawnRequest {
@@ -2891,10 +3084,7 @@ impl RuntimeEffects for Kernel {
         task_id: Option<&str>,
         correlation_id: &str,
     ) -> Vec<String> {
-        match self.tools.as_mut() {
-            Some(ex) => ex.plan(id, calls, task_id, correlation_id),
-            None => (0..calls.len()).map(|i| format!("r-{i:04}")).collect(),
-        }
+        Kernel::plan_tools(self, id, calls, task_id, correlation_id)
     }
     fn execute_tool(
         &mut self,
@@ -2905,10 +3095,7 @@ impl RuntimeEffects for Kernel {
         task_id: Option<&str>,
         correlation_id: &str,
     ) -> ToolResultView {
-        match self.tools.as_mut() {
-            Some(ex) => ex.execute(id, tool, args, rid, task_id, correlation_id),
-            None => tools::refuse_unbound(tool),
-        }
+        Kernel::execute_tool(self, id, tool, args, rid, task_id, correlation_id)
     }
     fn poll_hit(&mut self, id: &str) -> Result<i64, crate::bus::BusError> {
         self.bus.polls.hit(id)
