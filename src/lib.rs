@@ -23,6 +23,7 @@ pub mod ids;
 pub mod journal;
 pub mod lifecycle;
 pub mod msg;
+pub mod policy;
 pub mod registry;
 pub mod sys;
 // modules added incrementally as milestones land

@@ -59,7 +59,7 @@ impl std::fmt::Display for BusError {
             BusError::PollingForbidden { actor, hits, limit } => write!(
                 f,
                 "{actor} polled {hits} times (limit {limit}): \
-                 use bus.wait_for() instead of re-checking"
+                 use kernel.wait_for() instead of re-checking"
             ),
         }
     }
@@ -1205,7 +1205,7 @@ mod tests {
         );
         assert_eq!(
             err.to_string(),
-            "nerd polled 3 times (limit 2): use bus.wait_for() instead of re-checking"
+            "nerd polled 3 times (limit 2): use kernel.wait_for() instead of re-checking"
         );
     }
 

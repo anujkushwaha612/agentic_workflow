@@ -1,0 +1,656 @@
+{
+ "decisions": [
+  {
+   "act": "PUBLISH",
+   "case": "sim/step0",
+   "condition": "",
+   "extra": {},
+   "msg": {
+    "body": "-33% of backend API",
+    "depth": 0,
+    "from": "be_01",
+    "payload": {
+     "percent": -33
+    },
+    "task_id": "t_be",
+    "to": "parent",
+    "type": "TASK_PROGRESS"
+   },
+   "ok": true,
+   "reason": "",
+   "timeout": null
+  },
+  {
+   "act": "PUBLISH",
+   "case": "sim/step1",
+   "condition": "",
+   "extra": {},
+   "msg": {
+    "body": "0% of backend API",
+    "depth": 0,
+    "from": "be_01",
+    "payload": {
+     "percent": 0
+    },
+    "task_id": "t_be",
+    "to": "parent",
+    "type": "TASK_PROGRESS"
+   },
+   "ok": true,
+   "reason": "",
+   "timeout": null
+  },
+  {
+   "act": "PUBLISH",
+   "case": "sim/step2",
+   "condition": "",
+   "extra": {},
+   "msg": {
+    "body": "33% of backend API",
+    "depth": 0,
+    "from": "be_01",
+    "payload": {
+     "percent": 33
+    },
+    "task_id": "t_be",
+    "to": "parent",
+    "type": "TASK_PROGRESS"
+   },
+   "ok": true,
+   "reason": "",
+   "timeout": null
+  },
+  {
+   "act": "PUBLISH",
+   "case": "sim/step3",
+   "condition": "",
+   "extra": {},
+   "msg": {
+    "body": "66% of backend API",
+    "depth": 0,
+    "from": "be_01",
+    "payload": {
+     "percent": 66
+    },
+    "task_id": "t_be",
+    "to": "parent",
+    "type": "TASK_PROGRESS"
+   },
+   "ok": true,
+   "reason": "",
+   "timeout": null
+  },
+  {
+   "act": "COMPLETE",
+   "case": "sim/step4",
+   "condition": "",
+   "extra": {
+    "artifacts": [
+     "out/api.md"
+    ]
+   },
+   "msg": null,
+   "ok": true,
+   "reason": "work finished",
+   "timeout": null
+  },
+  {
+   "act": "COMPLETE",
+   "case": "sim/no_task",
+   "condition": "",
+   "extra": {
+    "artifacts": []
+   },
+   "msg": null,
+   "ok": true,
+   "reason": "work finished",
+   "timeout": null
+  },
+  {
+   "act": "WAIT",
+   "case": "wait/missing",
+   "condition": "artifact:in/schema.sql",
+   "extra": {},
+   "msg": null,
+   "ok": true,
+   "reason": "needs in/schema.sql",
+   "timeout": 4.0
+  },
+  {
+   "act": "PUBLISH",
+   "case": "wait/resumed",
+   "condition": "",
+   "extra": {},
+   "msg": {
+    "body": "integrating t_be",
+    "depth": 1,
+    "from": "be_01",
+    "payload": {
+     "consumed": [
+      "in/schema.sql"
+     ]
+    },
+    "task_id": "t_be",
+    "to": "parent",
+    "type": "TASK_PROGRESS"
+   },
+   "ok": true,
+   "reason": "",
+   "timeout": null
+  },
+  {
+   "act": "PUBLISH",
+   "case": "wait/integrate2",
+   "condition": "",
+   "extra": {},
+   "msg": {
+    "body": "integrating t_be",
+    "depth": 0,
+    "from": "be_01",
+    "payload": {
+     "consumed": [
+      "in/schema.sql"
+     ]
+    },
+    "task_id": "t_be",
+    "to": "parent",
+    "type": "TASK_PROGRESS"
+   },
+   "ok": true,
+   "reason": "",
+   "timeout": null
+  },
+  {
+   "act": "COMPLETE",
+   "case": "wait/complete",
+   "condition": "",
+   "extra": {
+    "artifacts": [
+     "out/api.md"
+    ]
+   },
+   "msg": null,
+   "ok": true,
+   "reason": "integrated against upstream artifacts",
+   "timeout": null
+  },
+  {
+   "act": "COMPLETE",
+   "case": "poll/step1",
+   "condition": "",
+   "extra": {},
+   "msg": null,
+   "ok": true,
+   "reason": "dependency showed up on poll 1",
+   "timeout": null
+  },
+  {
+   "act": "COMPLETE",
+   "case": "poll/step2",
+   "condition": "",
+   "extra": {},
+   "msg": null,
+   "ok": true,
+   "reason": "dependency showed up on poll 2",
+   "timeout": null
+  },
+  {
+   "act": "COMPLETE",
+   "case": "poll/step3",
+   "condition": "",
+   "extra": {},
+   "msg": null,
+   "ok": true,
+   "reason": "dependency showed up on poll 3",
+   "timeout": null
+  },
+  {
+   "act": "ESCALATE",
+   "case": "poll/clear",
+   "condition": "",
+   "extra": {},
+   "msg": null,
+   "ok": true,
+   "reason": "gave up after 4 polls",
+   "timeout": null
+  },
+  {
+   "act": "PUBLISH",
+   "case": "esc/ask",
+   "condition": "",
+   "extra": {},
+   "msg": {
+    "body": "auth/authorization design needs specialized expertise",
+    "depth": 0,
+    "from": "be_01",
+    "payload": {
+     "capability_class": "",
+     "estimated_work": 3.0,
+     "expected_outputs": [],
+     "parent_task_id": "t_be",
+     "reason": "auth/authorization design needs specialized expertise",
+     "requested_role": "security engineer",
+     "required_inputs": [],
+     "required_skills": [
+      "auth",
+      "crypto"
+     ],
+     "requires_judgment": false
+    },
+    "task_id": "t_be",
+    "to": "parent",
+    "type": "SPAWN_AGENT_REQUEST"
+   },
+   "ok": true,
+   "reason": "request specialist",
+   "timeout": null
+  },
+  {
+   "act": "ESCALATE",
+   "case": "esc/escalate",
+   "condition": "",
+   "extra": {
+    "requested_role": "security engineer"
+   },
+   "msg": null,
+   "ok": true,
+   "reason": "repeated specialist need cannot be resolved locally",
+   "timeout": null
+  },
+  {
+   "act": "PROCEED",
+   "case": "esc/low",
+   "condition": "",
+   "extra": {},
+   "msg": null,
+   "ok": true,
+   "reason": "assessing complexity",
+   "timeout": null
+  },
+  {
+   "act": "PUBLISH",
+   "case": "esc/handoff",
+   "condition": "",
+   "extra": {},
+   "msg": {
+    "body": "auth/authorization design needs specialized expertise",
+    "depth": 1,
+    "from": "be_01",
+    "payload": {
+     "capability_class": "",
+     "estimated_work": 3.0,
+     "expected_outputs": [],
+     "parent_task_id": "t_small",
+     "reason": "auth/authorization design needs specialized expertise",
+     "requested_role": "security engineer",
+     "required_inputs": [],
+     "required_skills": [
+      "auth",
+      "crypto"
+     ],
+     "requires_judgment": false
+    },
+    "task_id": "t_small",
+    "to": "parent",
+    "type": "SPAWN_AGENT_REQUEST"
+   },
+   "ok": true,
+   "reason": "request specialist after upstream handoff",
+   "timeout": null
+  },
+  {
+   "act": "PROCEED",
+   "case": "esc/approved_log",
+   "condition": "",
+   "extra": {},
+   "msg": null,
+   "ok": true,
+   "reason": "assessing complexity",
+   "timeout": null
+  },
+  {
+   "act": "PROCEED",
+   "case": "ns/early1",
+   "condition": "",
+   "extra": {},
+   "msg": null,
+   "ok": true,
+   "reason": "working",
+   "timeout": null
+  },
+  {
+   "act": "PROCEED",
+   "case": "ns/early2",
+   "condition": "",
+   "extra": {},
+   "msg": null,
+   "ok": true,
+   "reason": "working",
+   "timeout": null
+  },
+  {
+   "act": "PUBLISH",
+   "case": "ns/ask",
+   "condition": "",
+   "extra": {},
+   "msg": {
+    "body": "provider-specific webhook handling is outside this agent's declared skills",
+    "depth": 0,
+    "from": "be_01",
+    "payload": {
+     "capability_class": "payments",
+     "estimated_work": 3.0,
+     "expected_outputs": [
+      "artifacts/payments-webhooks.md"
+     ],
+     "parent_task_id": "t_be",
+     "reason": "provider-specific webhook handling is outside this agent's declared skills",
+     "requested_role": "payment specialist",
+     "required_inputs": [
+      "in/schema.sql"
+     ],
+     "required_skills": [
+      "payments",
+      "webhooks"
+     ],
+     "requires_judgment": false
+    },
+    "task_id": "t_be",
+    "to": "parent",
+    "type": "SPAWN_AGENT_REQUEST"
+   },
+   "ok": true,
+   "reason": "request specialist mid-run",
+   "timeout": null
+  },
+  {
+   "act": "PROCEED",
+   "case": "ns/after",
+   "condition": "",
+   "extra": {},
+   "msg": null,
+   "ok": true,
+   "reason": "working",
+   "timeout": null
+  },
+  {
+   "act": "COMPLETE",
+   "case": "ns/complete",
+   "condition": "",
+   "extra": {
+    "artifacts": [
+     "out/api.md"
+    ]
+   },
+   "msg": null,
+   "ok": true,
+   "reason": "finished with the capability available",
+   "timeout": null
+  },
+  {
+   "act": "PUBLISH",
+   "case": "ns/detect_ask",
+   "condition": "",
+   "extra": {},
+   "msg": {
+    "body": "provider-specific webhook handling is outside this agent's declared skills",
+    "depth": 0,
+    "from": "be_01",
+    "payload": {
+     "capability_class": "payments",
+     "estimated_work": 3.0,
+     "expected_outputs": [
+      "artifacts/payments-webhooks.md"
+     ],
+     "parent_task_id": "t_be",
+     "reason": "provider-specific webhook handling is outside this agent's declared skills",
+     "requested_role": "payment specialist",
+     "required_inputs": [
+      "in/schema.sql"
+     ],
+     "required_skills": [
+      "payments",
+      "webhooks"
+     ],
+     "requires_judgment": false
+    },
+    "task_id": "t_be",
+    "to": "parent",
+    "type": "SPAWN_AGENT_REQUEST"
+   },
+   "ok": true,
+   "reason": "request specialist mid-run",
+   "timeout": null
+  },
+  {
+   "act": "PROCEED",
+   "case": "ns/detect_self",
+   "condition": "",
+   "extra": {},
+   "msg": null,
+   "ok": true,
+   "reason": "working",
+   "timeout": null
+  },
+  {
+   "act": "PROCEED",
+   "case": "ns/rejected_log",
+   "condition": "",
+   "extra": {},
+   "msg": null,
+   "ok": true,
+   "reason": "working",
+   "timeout": null
+  },
+  {
+   "act": "PROCEED",
+   "case": "hybrid/llm_down",
+   "condition": "",
+   "extra": {},
+   "msg": null,
+   "ok": true,
+   "reason": "assessing complexity",
+   "timeout": null
+  },
+  {
+   "act": "PROCEED",
+   "case": "hybrid/no_llm",
+   "condition": "",
+   "extra": {},
+   "msg": null,
+   "ok": true,
+   "reason": "assessing complexity",
+   "timeout": null
+  }
+ ],
+ "logs": [
+  {
+   "case": "sim/step0",
+   "logs": []
+  },
+  {
+   "case": "sim/step1",
+   "logs": []
+  },
+  {
+   "case": "sim/step2",
+   "logs": []
+  },
+  {
+   "case": "sim/step3",
+   "logs": []
+  },
+  {
+   "case": "sim/step4",
+   "logs": []
+  },
+  {
+   "case": "wait/missing",
+   "logs": []
+  },
+  {
+   "case": "wait/resumed",
+   "logs": [
+    "resumed by in/schema.sql is ready (published)"
+   ]
+  },
+  {
+   "case": "wait/integrate2",
+   "logs": []
+  },
+  {
+   "case": "wait/complete",
+   "logs": []
+  },
+  {
+   "case": "poll/step1",
+   "logs": []
+  },
+  {
+   "case": "poll/step2",
+   "logs": []
+  },
+  {
+   "case": "poll/step3",
+   "logs": []
+  },
+  {
+   "case": "poll/clear",
+   "logs": []
+  },
+  {
+   "case": "esc/ask",
+   "logs": []
+  },
+  {
+   "case": "esc/escalate",
+   "logs": []
+  },
+  {
+   "case": "esc/low",
+   "logs": []
+  },
+  {
+   "case": "esc/handoff",
+   "logs": []
+  },
+  {
+   "case": "esc/approved_log",
+   "logs": [
+    "parent approved: ok"
+   ]
+  },
+  {
+   "case": "ns/early1",
+   "logs": []
+  },
+  {
+   "case": "ns/early2",
+   "logs": []
+  },
+  {
+   "case": "ns/ask",
+   "logs": []
+  },
+  {
+   "case": "ns/after",
+   "logs": []
+  },
+  {
+   "case": "ns/complete",
+   "logs": []
+  },
+  {
+   "case": "ns/detect_ask",
+   "logs": []
+  },
+  {
+   "case": "ns/detect_self",
+   "logs": []
+  },
+  {
+   "case": "ns/rejected_log",
+   "logs": [
+    "parent refused spawn (CAP); continuing alone"
+   ]
+  },
+  {
+   "case": "hybrid/llm_down",
+   "logs": [
+    "llm unavailable: model is down"
+   ]
+  },
+  {
+   "case": "hybrid/no_llm",
+   "logs": []
+  }
+ ],
+ "make_policy": {
+  "hybrid": "\"unknown policy 'hybrid'; choose from ['escalate', 'poll', 'simulated', 'specialist', 'wait']\"",
+  "names": {
+   "escalate": "escalate-on-complexity",
+   "poll": "poll-anti-pattern",
+   "simulated": "simulated-work",
+   "specialist": "needs-specialist",
+   "wait": "wait-for-artifacts"
+  },
+  "nope": "\"unknown policy 'nope'; choose from ['escalate', 'poll', 'simulated', 'specialist', 'wait']\"",
+  "sim_steps5_complete_at": true,
+  "specialist_override": {
+   "act": "PUBLISH",
+   "condition": "",
+   "extra": {},
+   "msg": {
+    "body": "provider-specific webhook handling is outside this agent's declared skills",
+    "depth": 0,
+    "from": "be_01",
+    "payload": {
+     "capability_class": "payments",
+     "estimated_work": 3.0,
+     "expected_outputs": [
+      "artifacts/payments-webhooks.md"
+     ],
+     "parent_task_id": "t_be",
+     "reason": "provider-specific webhook handling is outside this agent's declared skills",
+     "requested_role": "ml engineer",
+     "required_inputs": [
+      "in/schema.sql"
+     ],
+     "required_skills": [
+      "payments",
+      "webhooks"
+     ],
+     "requires_judgment": false
+    },
+    "task_id": "t_be",
+    "to": "parent",
+    "type": "SPAWN_AGENT_REQUEST"
+   },
+   "reason": "request specialist mid-run",
+   "timeout": null
+  }
+ },
+ "self_msg_inherit": {
+  "body": "50%",
+  "depth": 1,
+  "from": "be_01",
+  "payload": {
+   "percent": 50
+  },
+  "task_id": null,
+  "to": "parent",
+  "type": "TASK_PROGRESS"
+ },
+ "sleeping": {
+  "": false,
+  "Complete": true,
+  "ERROR": true,
+  "ESCALATE": true,
+  "NOOP": false,
+  "PROCEED": false,
+  "PUBLISH": false,
+  "WAIT": true,
+  "error": true,
+  "wait": true
+ }
+}

@@ -319,7 +319,7 @@ impl EventType {
 
 /// A bus message. Field-for-field the Python `Message` dataclass; the payload is
 /// an open JSON object (the reference's `**fields`), so it stays a `JMap`.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Message {
     pub msg_type: EventType,
     pub from_actor: ActorName,
