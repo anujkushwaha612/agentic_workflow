@@ -18,6 +18,7 @@
 
 pub mod bus;
 pub mod clock;
+pub mod cognition;
 pub mod graph;
 pub mod ids;
 pub mod journal;

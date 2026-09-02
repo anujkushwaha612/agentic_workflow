@@ -541,6 +541,73 @@ impl<'a> Parser<'a> {
     }
 }
 
+// ------------------------------------------------------------------- py repr
+
+/// CPython `repr()` for JSON values — needed wherever the reference embeds a
+/// dict/list repr in a digest or a string (e.g. `Intent.fingerprint()`).
+///
+/// Dict iteration here is the map's sorted order; the reference's insertion
+/// order is matched by passing the explicit key order where the reference's
+/// constructor fixes it (see [`py_repr_ordered`]). String quoting follows
+/// CPython exactly: single quotes unless the string contains `'` and not `"`.
+pub fn py_repr(v: &JValue) -> String {
+    match v {
+        JValue::Null => "None".to_string(),
+        JValue::Bool(b) => if *b { "True" } else { "False" }.to_string(),
+        JValue::Int(i) => i.to_string(),
+        JValue::Float(f) => py_float_repr(*f),
+        JValue::Str(s) => py_str_repr(s),
+        JValue::Arr(items) => {
+            let inner: Vec<String> = items.iter().map(py_repr).collect();
+            format!("[{}]", inner.join(", "))
+        }
+        JValue::Obj(m) => py_repr_pairs(m.iter().map(|(k, v)| (k.as_str(), v)).collect::<Vec<_>>()),
+    }
+}
+
+/// `py_repr` for a dict whose key order is fixed by the reference's
+/// constructor (`Intent.to_dict` builds calls/control/think/... in order).
+pub fn py_repr_ordered(pairs: &[(&str, &JValue)]) -> String {
+    py_repr_pairs(pairs.to_vec())
+}
+
+fn py_repr_pairs(pairs: Vec<(&str, &JValue)>) -> String {
+    let inner: Vec<String> = pairs
+        .iter()
+        .map(|(k, v)| format!("{}: {}", py_str_repr(k), py_repr(v)))
+        .collect();
+    format!("{{{}}}", inner.join(", "))
+}
+
+/// CPython string repr: prefer `'...'`; switch to `"..."` only when the string
+/// contains `'` and not `"`; escape per `str.__repr__` (printables literal,
+/// short letter escapes, `\xNN` for other control bytes).
+pub fn py_str_repr(s: &str) -> String {
+    let has_sq = s.contains('\'');
+    let has_dq = s.contains('"');
+    let quote = if has_sq && !has_dq { '"' } else { '\'' };
+    let mut out = String::with_capacity(s.len() + 2);
+    out.push(quote);
+    for ch in s.chars() {
+        match ch {
+            '\\' => out.push_str("\\\\"),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            '\t' => out.push_str("\\t"),
+            c if c == quote => {
+                out.push('\\');
+                out.push(c);
+            }
+            c if (c as u32) < 0x20 || (c as u32) == 0x7f => {
+                out.push_str(&format!("\\x{:02x}", c as u32));
+            }
+            c => out.push(c),
+        }
+    }
+    out.push(quote);
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

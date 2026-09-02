@@ -367,6 +367,45 @@ impl Message {
         }
     }
 
+    /// CPython's dataclass repr for Message (`Message(msg_type=<MessageType.X:
+    /// 'X'>, ...)` in declaration order). Used only where the reference embeds
+    /// the message object in a repr digest (Intent fingerprints); payload maps
+    /// render in sorted key order — a documented deviation whenever a payload
+    /// mixes key order, which the built-in policies never do.
+    pub fn py_repr(&self) -> String {
+        use crate::sys::json::{py_float_repr, py_repr, py_str_repr};
+        let ety = format!(
+            "<MessageType.{}: '{}'>",
+            self.msg_type.as_str(),
+            self.msg_type.as_str()
+        );
+        let plane = format!(
+            "<Plane.{}: '{}'>",
+            self.plane.as_str().to_uppercase(),
+            self.plane.as_str()
+        );
+        let opt = |v: &Option<String>| match v {
+            Some(s) => py_str_repr(s),
+            None => "None".to_string(),
+        };
+        format!(
+            "Message(msg_type={ety}, from_actor={}, to_actor={}, body={}, payload={}, topic={}, resource={}, task_id={}, plane={plane}, correlation_id={}, caused_by={}, causal_depth={}, seq={}, ts={}, mid={})",
+            py_str_repr(self.from_actor.as_str()),
+            py_str_repr(self.to_actor.as_str()),
+            py_str_repr(&self.body),
+            py_repr(&JValue::Obj(self.payload.clone())),
+            py_str_repr(&self.topic),
+            opt(&self.resource.as_deref().map(|s| s.to_string())),
+            opt(&self.task_id.as_deref().map(|s| s.to_string())),
+            py_str_repr(self.correlation_id.as_str()),
+            opt(&self.caused_by),
+            self.causal_depth,
+            self.seq,
+            py_float_repr(self.ts),
+            py_str_repr(&self.mid),
+        )
+    }
+
     pub fn matches(&self, pattern: &str) -> bool {
         fnmatch_case(&self.topic, pattern) || self.topic == pattern
     }
