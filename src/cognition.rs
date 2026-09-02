@@ -631,6 +631,15 @@ pub trait Cognition {
     /// Introspection that makes an *accidentally shared* brain visible rather
     /// than plausible.
     fn fingerprint(&self) -> JMap;
+    /// How far this source got inside the current task. Journaled on every
+    /// turn so a resumed agent continues rather than repeating work.
+    /// Provider sources that have no cursor leave the default (0).
+    fn policy_cursor(&self) -> i64 {
+        0
+    }
+    /// Restore counters after a replay. Default is a no-op so an LLM source
+    /// is not forced to invent a cursor.
+    fn restore_cursor(&mut self, _cursor: i64) {}
 }
 
 // ------------------------------------------------------------------ adapter
@@ -662,6 +671,12 @@ impl Cognition for PolicyCognition {
         &self.name
     }
 
+    fn policy_cursor(&self) -> i64 {
+        self.policy.policy_cursor()
+    }
+    fn restore_cursor(&mut self, cursor: i64) {
+        self.policy.restore_cursor(cursor);
+    }
     fn fingerprint(&self) -> JMap {
         let mut m = JMap::new();
         m.insert("source".into(), JValue::Str(self.name.clone()));
