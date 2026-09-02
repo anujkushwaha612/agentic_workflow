@@ -155,7 +155,7 @@ pub struct TransitionRecord {
 }
 
 /// State holder with a monotonic per-state clock (needed by idle-TTL reaping).
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Lifecycle {
     pub state: AgentState,
     pub since: f64,
