@@ -1,0 +1,1006 @@
+{
+ "active_waits_after": [],
+ "all_waits_states": [
+  {
+   "state": "RESOLVED",
+   "wait_id": "w-0001",
+   "wake_reason": "published"
+  },
+  {
+   "state": "RESOLVED",
+   "wait_id": "w-0002",
+   "wake_reason": "published"
+  },
+  {
+   "state": "TIMED_OUT",
+   "wait_id": "w-0003",
+   "wake_reason": "WAIT_TIMEOUT"
+  }
+ ],
+ "budget": {
+  "delivered": 8,
+  "dropped": 32,
+  "last_delivery": {
+   "case": "flood_last",
+   "dropped_budget": [
+    "victim"
+   ],
+   "dropped_depth": [],
+   "not_subscribed": [],
+   "recipients": []
+  },
+  "victim_queue_len": 9
+ },
+ "budget_exceeded_payload": {
+  "body": "dropped DEPENDENCY_REQUEST: causal depth 4 > 3",
+  "reason": "MAX_CAUSAL_DEPTH"
+ },
+ "deliveries": [
+  {
+   "case": "direct_dependency",
+   "dropped_budget": [],
+   "dropped_depth": [],
+   "not_subscribed": [],
+   "recipients": [
+    "b"
+   ]
+  },
+  {
+   "case": "broadcast_dependency",
+   "dropped_budget": [],
+   "dropped_depth": [],
+   "not_subscribed": [],
+   "recipients": [
+    "parent",
+    "kernel",
+    "b",
+    "c",
+    "flooder",
+    "victim",
+    "quiet",
+    "loud",
+    "x",
+    "y",
+    "be",
+    "unrelated"
+   ]
+  },
+  {
+   "case": "progress_to_parent",
+   "dropped_budget": [],
+   "dropped_depth": [],
+   "not_subscribed": [],
+   "recipients": [
+    "parent"
+   ]
+  },
+  {
+   "case": "resource_broadcast",
+   "dropped_budget": [],
+   "dropped_depth": [],
+   "not_subscribed": [
+    "b",
+    "c",
+    "flooder",
+    "victim",
+    "quiet",
+    "x",
+    "y",
+    "be",
+    "unrelated"
+   ],
+   "recipients": [
+    "parent",
+    "kernel",
+    "loud"
+   ]
+  },
+  {
+   "case": "status_direct",
+   "dropped_budget": [],
+   "dropped_depth": [],
+   "not_subscribed": [],
+   "recipients": [
+    "be"
+   ]
+  },
+  {
+   "case": "plan_gated",
+   "dropped_budget": [],
+   "dropped_depth": [],
+   "not_subscribed": [
+    "be"
+   ],
+   "recipients": []
+  },
+  {
+   "case": "parent_broadcast",
+   "dropped_budget": [],
+   "dropped_depth": [],
+   "not_subscribed": [
+    "a",
+    "b",
+    "c",
+    "flooder",
+    "victim",
+    "quiet",
+    "loud",
+    "x",
+    "y",
+    "be",
+    "unrelated"
+   ],
+   "recipients": [
+    "parent",
+    "kernel"
+   ]
+  }
+ ],
+ "depth": {
+  "budget_exceeded_events": 1,
+  "dropped_depth_stat": 1,
+  "hops_delivered": 3
+ },
+ "direct_topic": "dependency.dependency.request",
+ "expire_at_1.0": [],
+ "expired": [
+  {
+   "agent": "quiet",
+   "condition": "artifact:never",
+   "wait_id": "w-0003"
+  }
+ ],
+ "journal_events": [
+  [
+   1,
+   "DEPENDENCY_REQUEST",
+   "a",
+   "b",
+   ""
+  ],
+  [
+   2,
+   "DEPENDENCY_READY",
+   "a",
+   "broadcast",
+   ""
+  ],
+  [
+   3,
+   "TASK_PROGRESS",
+   "a",
+   "parent",
+   ""
+  ],
+  [
+   4,
+   "RESOURCE_UPDATED",
+   "a",
+   "broadcast",
+   ""
+  ],
+  [
+   5,
+   "STATUS_UPDATE",
+   "parent",
+   "be",
+   ""
+  ],
+  [
+   6,
+   "PLAN_AMENDED",
+   "parent",
+   "be",
+   ""
+  ],
+  [
+   7,
+   "PLAN_CREATED",
+   "parent",
+   "broadcast",
+   ""
+  ],
+  [
+   8,
+   "DEPENDENCY_REQUEST",
+   "x",
+   "y",
+   ""
+  ],
+  [
+   9,
+   "DEPENDENCY_REQUEST",
+   "y",
+   "x",
+   ""
+  ],
+  [
+   10,
+   "DEPENDENCY_REQUEST",
+   "x",
+   "y",
+   ""
+  ],
+  [
+   11,
+   "DEPENDENCY_REQUEST",
+   "y",
+   "x",
+   ""
+  ],
+  [
+   12,
+   "DEPENDENCY_REQUEST",
+   "x",
+   "y",
+   ""
+  ],
+  [
+   13,
+   "BUDGET_EXCEEDED",
+   "x",
+   "parent",
+   ""
+  ],
+  [
+   14,
+   "DEPENDENCY_REQUEST",
+   "flooder",
+   "victim",
+   ""
+  ],
+  [
+   15,
+   "DEPENDENCY_REQUEST",
+   "flooder",
+   "victim",
+   ""
+  ],
+  [
+   16,
+   "DEPENDENCY_REQUEST",
+   "flooder",
+   "victim",
+   ""
+  ],
+  [
+   17,
+   "DEPENDENCY_REQUEST",
+   "flooder",
+   "victim",
+   ""
+  ],
+  [
+   18,
+   "DEPENDENCY_REQUEST",
+   "flooder",
+   "victim",
+   ""
+  ],
+  [
+   19,
+   "DEPENDENCY_REQUEST",
+   "flooder",
+   "victim",
+   ""
+  ],
+  [
+   20,
+   "DEPENDENCY_REQUEST",
+   "flooder",
+   "victim",
+   ""
+  ],
+  [
+   21,
+   "DEPENDENCY_REQUEST",
+   "flooder",
+   "victim",
+   ""
+  ],
+  [
+   22,
+   "DEPENDENCY_REQUEST",
+   "flooder",
+   "victim",
+   ""
+  ],
+  [
+   23,
+   "DEPENDENCY_REQUEST",
+   "flooder",
+   "victim",
+   ""
+  ],
+  [
+   24,
+   "DEPENDENCY_REQUEST",
+   "flooder",
+   "victim",
+   ""
+  ],
+  [
+   25,
+   "DEPENDENCY_REQUEST",
+   "flooder",
+   "victim",
+   ""
+  ],
+  [
+   26,
+   "DEPENDENCY_REQUEST",
+   "flooder",
+   "victim",
+   ""
+  ],
+  [
+   27,
+   "DEPENDENCY_REQUEST",
+   "flooder",
+   "victim",
+   ""
+  ],
+  [
+   28,
+   "DEPENDENCY_REQUEST",
+   "flooder",
+   "victim",
+   ""
+  ],
+  [
+   29,
+   "DEPENDENCY_REQUEST",
+   "flooder",
+   "victim",
+   ""
+  ],
+  [
+   30,
+   "DEPENDENCY_REQUEST",
+   "flooder",
+   "victim",
+   ""
+  ],
+  [
+   31,
+   "DEPENDENCY_REQUEST",
+   "flooder",
+   "victim",
+   ""
+  ],
+  [
+   32,
+   "DEPENDENCY_REQUEST",
+   "flooder",
+   "victim",
+   ""
+  ],
+  [
+   33,
+   "DEPENDENCY_REQUEST",
+   "flooder",
+   "victim",
+   ""
+  ],
+  [
+   34,
+   "DEPENDENCY_REQUEST",
+   "flooder",
+   "victim",
+   ""
+  ],
+  [
+   35,
+   "DEPENDENCY_REQUEST",
+   "flooder",
+   "victim",
+   ""
+  ],
+  [
+   36,
+   "DEPENDENCY_REQUEST",
+   "flooder",
+   "victim",
+   ""
+  ],
+  [
+   37,
+   "DEPENDENCY_REQUEST",
+   "flooder",
+   "victim",
+   ""
+  ],
+  [
+   38,
+   "DEPENDENCY_REQUEST",
+   "flooder",
+   "victim",
+   ""
+  ],
+  [
+   39,
+   "DEPENDENCY_REQUEST",
+   "flooder",
+   "victim",
+   ""
+  ],
+  [
+   40,
+   "DEPENDENCY_REQUEST",
+   "flooder",
+   "victim",
+   ""
+  ],
+  [
+   41,
+   "DEPENDENCY_REQUEST",
+   "flooder",
+   "victim",
+   ""
+  ],
+  [
+   42,
+   "DEPENDENCY_REQUEST",
+   "flooder",
+   "victim",
+   ""
+  ],
+  [
+   43,
+   "DEPENDENCY_REQUEST",
+   "flooder",
+   "victim",
+   ""
+  ],
+  [
+   44,
+   "DEPENDENCY_REQUEST",
+   "flooder",
+   "victim",
+   ""
+  ],
+  [
+   45,
+   "DEPENDENCY_REQUEST",
+   "flooder",
+   "victim",
+   ""
+  ],
+  [
+   46,
+   "DEPENDENCY_REQUEST",
+   "flooder",
+   "victim",
+   ""
+  ],
+  [
+   47,
+   "DEPENDENCY_REQUEST",
+   "flooder",
+   "victim",
+   ""
+  ],
+  [
+   48,
+   "DEPENDENCY_REQUEST",
+   "flooder",
+   "victim",
+   ""
+  ],
+  [
+   49,
+   "DEPENDENCY_REQUEST",
+   "flooder",
+   "victim",
+   ""
+  ],
+  [
+   50,
+   "DEPENDENCY_REQUEST",
+   "flooder",
+   "victim",
+   ""
+  ],
+  [
+   51,
+   "DEPENDENCY_REQUEST",
+   "flooder",
+   "victim",
+   ""
+  ],
+  [
+   52,
+   "DEPENDENCY_REQUEST",
+   "flooder",
+   "victim",
+   ""
+  ],
+  [
+   53,
+   "DEPENDENCY_REQUEST",
+   "flooder",
+   "victim",
+   ""
+  ],
+  [
+   54,
+   "WAIT_REGISTERED",
+   "be",
+   "parent",
+   "t1"
+  ],
+  [
+   55,
+   "WAIT_REGISTERED",
+   "unrelated",
+   "parent",
+   ""
+  ],
+  [
+   56,
+   "WAIT_REGISTERED",
+   "quiet",
+   "parent",
+   ""
+  ],
+  [
+   57,
+   "DEPENDENCY_READY",
+   "dependency_manager",
+   "be",
+   "t1"
+  ],
+  [
+   58,
+   "WAIT_RESOLVED",
+   "dependency_manager",
+   "be",
+   "t1"
+  ],
+  [
+   59,
+   "DEPENDENCY_READY",
+   "dependency_manager",
+   "unrelated",
+   ""
+  ],
+  [
+   60,
+   "WAIT_RESOLVED",
+   "dependency_manager",
+   "unrelated",
+   ""
+  ],
+  [
+   61,
+   "WAIT_TIMEOUT",
+   "dependency_manager",
+   "quiet",
+   ""
+  ]
+ ],
+ "kernel_broadcast_count": 3,
+ "mailboxes": {
+  "a": [],
+  "b": [
+   {
+    "body": "hi",
+    "from": "a",
+    "plane": "dependency",
+    "task_id": null,
+    "to": "b",
+    "topic": "dependency.dependency.request",
+    "type": "DEPENDENCY_REQUEST"
+   },
+   {
+    "body": "schema is ready",
+    "from": "a",
+    "plane": "dependency",
+    "task_id": null,
+    "to": "broadcast",
+    "topic": "dependency.dependency.ready",
+    "type": "DEPENDENCY_READY"
+   }
+  ],
+  "be": [
+   {
+    "body": "schema is ready",
+    "from": "a",
+    "plane": "dependency",
+    "task_id": null,
+    "to": "broadcast",
+    "topic": "dependency.dependency.ready",
+    "type": "DEPENDENCY_READY"
+   },
+   {
+    "body": "hello",
+    "from": "parent",
+    "plane": "control",
+    "task_id": null,
+    "to": "be",
+    "topic": "control.agent.status_update",
+    "type": "STATUS_UPDATE"
+   },
+   {
+    "body": "artifact:schema.sql is ready (published)",
+    "from": "dependency_manager",
+    "plane": "dependency",
+    "task_id": "t1",
+    "to": "be",
+    "topic": "dependency.dependency.ready",
+    "type": "DEPENDENCY_READY"
+   }
+  ],
+  "c": [
+   {
+    "body": "schema is ready",
+    "from": "a",
+    "plane": "dependency",
+    "task_id": null,
+    "to": "broadcast",
+    "topic": "dependency.dependency.ready",
+    "type": "DEPENDENCY_READY"
+   }
+  ],
+  "flooder": [
+   {
+    "body": "schema is ready",
+    "from": "a",
+    "plane": "dependency",
+    "task_id": null,
+    "to": "broadcast",
+    "topic": "dependency.dependency.ready",
+    "type": "DEPENDENCY_READY"
+   }
+  ],
+  "loud": [
+   {
+    "body": "schema is ready",
+    "from": "a",
+    "plane": "dependency",
+    "task_id": null,
+    "to": "broadcast",
+    "topic": "dependency.dependency.ready",
+    "type": "DEPENDENCY_READY"
+   },
+   {
+    "body": "changed",
+    "from": "a",
+    "plane": "resource",
+    "task_id": null,
+    "to": "broadcast",
+    "topic": "resource.resource.updated",
+    "type": "RESOURCE_UPDATED"
+   }
+  ],
+  "parent": [
+   {
+    "body": "schema is ready",
+    "from": "a",
+    "plane": "dependency",
+    "task_id": null,
+    "to": "broadcast",
+    "topic": "dependency.dependency.ready",
+    "type": "DEPENDENCY_READY"
+   },
+   {
+    "body": "30%",
+    "from": "a",
+    "plane": "control",
+    "task_id": null,
+    "to": "parent",
+    "topic": "control.task.progress",
+    "type": "TASK_PROGRESS"
+   },
+   {
+    "body": "changed",
+    "from": "a",
+    "plane": "resource",
+    "task_id": null,
+    "to": "broadcast",
+    "topic": "resource.resource.updated",
+    "type": "RESOURCE_UPDATED"
+   },
+   {
+    "body": "plan",
+    "from": "parent",
+    "plane": "control",
+    "task_id": null,
+    "to": "broadcast",
+    "topic": "control.plan.created",
+    "type": "PLAN_CREATED"
+   }
+  ],
+  "quiet": [
+   {
+    "body": "schema is ready",
+    "from": "a",
+    "plane": "dependency",
+    "task_id": null,
+    "to": "broadcast",
+    "topic": "dependency.dependency.ready",
+    "type": "DEPENDENCY_READY"
+   },
+   {
+    "body": "gave up waiting for artifact:never after 1.00s",
+    "from": "dependency_manager",
+    "plane": "dependency",
+    "task_id": null,
+    "to": "quiet",
+    "topic": "dependency.wait.timeout",
+    "type": "WAIT_TIMEOUT"
+   }
+  ],
+  "unrelated": [
+   {
+    "body": "schema is ready",
+    "from": "a",
+    "plane": "dependency",
+    "task_id": null,
+    "to": "broadcast",
+    "topic": "dependency.dependency.ready",
+    "type": "DEPENDENCY_READY"
+   },
+   {
+    "body": "artifact:schema.sql is ready (published)",
+    "from": "dependency_manager",
+    "plane": "dependency",
+    "task_id": null,
+    "to": "unrelated",
+    "topic": "dependency.dependency.ready",
+    "type": "DEPENDENCY_READY"
+   }
+  ],
+  "victim": [
+   {
+    "body": "schema is ready",
+    "from": "a",
+    "plane": "dependency",
+    "task_id": null,
+    "to": "broadcast",
+    "topic": "dependency.dependency.ready",
+    "type": "DEPENDENCY_READY"
+   },
+   {
+    "body": "spam 0",
+    "from": "flooder",
+    "plane": "dependency",
+    "task_id": null,
+    "to": "victim",
+    "topic": "dependency.dependency.request",
+    "type": "DEPENDENCY_REQUEST"
+   },
+   {
+    "body": "spam 1",
+    "from": "flooder",
+    "plane": "dependency",
+    "task_id": null,
+    "to": "victim",
+    "topic": "dependency.dependency.request",
+    "type": "DEPENDENCY_REQUEST"
+   },
+   {
+    "body": "spam 2",
+    "from": "flooder",
+    "plane": "dependency",
+    "task_id": null,
+    "to": "victim",
+    "topic": "dependency.dependency.request",
+    "type": "DEPENDENCY_REQUEST"
+   },
+   {
+    "body": "spam 3",
+    "from": "flooder",
+    "plane": "dependency",
+    "task_id": null,
+    "to": "victim",
+    "topic": "dependency.dependency.request",
+    "type": "DEPENDENCY_REQUEST"
+   },
+   {
+    "body": "spam 4",
+    "from": "flooder",
+    "plane": "dependency",
+    "task_id": null,
+    "to": "victim",
+    "topic": "dependency.dependency.request",
+    "type": "DEPENDENCY_REQUEST"
+   },
+   {
+    "body": "spam 5",
+    "from": "flooder",
+    "plane": "dependency",
+    "task_id": null,
+    "to": "victim",
+    "topic": "dependency.dependency.request",
+    "type": "DEPENDENCY_REQUEST"
+   },
+   {
+    "body": "spam 6",
+    "from": "flooder",
+    "plane": "dependency",
+    "task_id": null,
+    "to": "victim",
+    "topic": "dependency.dependency.request",
+    "type": "DEPENDENCY_REQUEST"
+   },
+   {
+    "body": "spam 7",
+    "from": "flooder",
+    "plane": "dependency",
+    "task_id": null,
+    "to": "victim",
+    "topic": "dependency.dependency.request",
+    "type": "DEPENDENCY_REQUEST"
+   }
+  ],
+  "x": [
+   {
+    "body": "schema is ready",
+    "from": "a",
+    "plane": "dependency",
+    "task_id": null,
+    "to": "broadcast",
+    "topic": "dependency.dependency.ready",
+    "type": "DEPENDENCY_READY"
+   },
+   {
+    "body": "reply 0",
+    "from": "y",
+    "plane": "dependency",
+    "task_id": null,
+    "to": "x",
+    "topic": "dependency.dependency.request",
+    "type": "DEPENDENCY_REQUEST"
+   },
+   {
+    "body": "reply 2",
+    "from": "y",
+    "plane": "dependency",
+    "task_id": null,
+    "to": "x",
+    "topic": "dependency.dependency.request",
+    "type": "DEPENDENCY_REQUEST"
+   }
+  ],
+  "y": [
+   {
+    "body": "schema is ready",
+    "from": "a",
+    "plane": "dependency",
+    "task_id": null,
+    "to": "broadcast",
+    "topic": "dependency.dependency.ready",
+    "type": "DEPENDENCY_READY"
+   },
+   {
+    "body": "",
+    "from": "x",
+    "plane": "dependency",
+    "task_id": null,
+    "to": "y",
+    "topic": "dependency.dependency.request",
+    "type": "DEPENDENCY_REQUEST"
+   },
+   {
+    "body": "reply 1",
+    "from": "x",
+    "plane": "dependency",
+    "task_id": null,
+    "to": "y",
+    "topic": "dependency.dependency.request",
+    "type": "DEPENDENCY_REQUEST"
+   }
+  ]
+ },
+ "patterns": {
+  "kernel": [
+   "*"
+  ],
+  "loud": [
+   "control.task.*",
+   "control.agent.*",
+   "dependency.*",
+   "resource.*"
+  ],
+  "parent": [
+   "control.*",
+   "dependency.*",
+   "resource.*"
+  ],
+  "quiet": [
+   "control.task.*",
+   "control.agent.*",
+   "dependency.*"
+  ]
+ },
+ "polls_default_zero": 0,
+ "registry_pending_after": {
+  "a": [],
+  "b": [],
+  "be": [],
+  "c": [],
+  "flooder": [],
+  "loud": [],
+  "quiet": [],
+  "unrelated": [],
+  "victim": [],
+  "x": [],
+  "y": []
+ },
+ "resource_topic": "resource.resource.updated",
+ "snapshot": {
+  "delivered": 35,
+  "dropped_budget": 32,
+  "dropped_depth": 1,
+  "dropped_unsubscribed": 21,
+  "poll_offenders": [],
+  "polls": 0,
+  "published": 55,
+  "subscriptions": {
+   "ghost": [],
+   "loud": [
+    "resource.*"
+   ],
+   "parent": [
+    "control.*",
+    "dependency.*",
+    "resource.*"
+   ]
+  },
+  "wakes": 2
+ },
+ "stats": {
+  "delivered": 35,
+  "dropped_budget": 32,
+  "dropped_depth": 1,
+  "dropped_unsubscribed": 21,
+  "published": 55,
+  "wakes": 2
+ },
+ "timeout_at": [
+  6.0,
+  null,
+  1.5
+ ],
+ "timeout_body": "gave up waiting for artifact:never after 1.00s",
+ "wait_ids": [
+  "w-0001",
+  "w-0002",
+  "w-0003"
+ ],
+ "wait_registered_payloads": [
+  {
+   "body": "waiting for artifact:schema.sql",
+   "condition": "artifact:schema.sql",
+   "timeout_at": 6.0,
+   "wait_id": "w-0001"
+  },
+  {
+   "body": "waiting for artifact:schema.sql",
+   "condition": "artifact:schema.sql",
+   "timeout_at": null,
+   "wait_id": "w-0002"
+  },
+  {
+   "body": "waiting for artifact:never",
+   "condition": "artifact:never",
+   "timeout_at": 1.5,
+   "wait_id": "w-0003"
+  }
+ ],
+ "wait_resolved_payloads": [
+  {
+   "body": "artifact:schema.sql -> published",
+   "wait_id": "w-0001"
+  },
+  {
+   "body": "artifact:schema.sql -> published",
+   "wait_id": "w-0002"
+  }
+ ],
+ "woken": [
+  "be",
+  "unrelated"
+ ]
+}

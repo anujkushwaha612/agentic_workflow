@@ -16,6 +16,7 @@
 //! reference until the parity suite proves equivalence; see
 //! `tests/parity/fixtures/` and `RUST_MIGRATION_PLAN.md`.
 
+pub mod bus;
 pub mod clock;
 pub mod graph;
 pub mod ids;

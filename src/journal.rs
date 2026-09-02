@@ -604,6 +604,12 @@ impl Journal {
         Ok(())
     }
 
+    /// Every wait row regardless of state (supervision/replay views).
+    pub fn all_waits(&self) -> Result<Vec<WaitRow>, JournalError> {
+        let rows = self.conn().run("SELECT * FROM waits", &[])?;
+        Ok(rows.iter().map(wait_row_from).collect())
+    }
+
     pub fn active_waits(&self, condition: Option<&str>) -> Result<Vec<WaitRow>, JournalError> {
         let rows = match condition {
             Some(c) => self.conn().run(
