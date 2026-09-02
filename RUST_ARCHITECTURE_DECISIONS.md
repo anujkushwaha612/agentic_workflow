@@ -340,8 +340,41 @@ identity, grant-empty, protected-before-prefix).
 
 ---
 
+## ADR-017 — M11 workspace / product seam
+
+**Python:** `arena/code/project.py` + `orchestrate.py` live in the
+product package. Engine never imports them. `organise()` binds
+CodingAgent.
+
+**Architecture:** Engine knows nothing about projects/prompts/CLIs.
+Product configures Kernel (journal in `.arena/`, jail root = `source/`)
+and gets out of the way. A foreign directory is refused, never guessed.
+
+**Rust:**
+1. `src/product/{mod,project,orchestrate}.rs`. Engine modules do not
+   import `crate::product` (`tests/boundary.rs`).
+2. Layout: `projects/<id>/{.arena,source,artifacts,logs}` + dual
+   `project.json`. Journal = `.arena/j.db`.
+3. `PROJECT_CREATED` is a journal row, not just a manifest field.
+4. `organise` staffs the graph, `bind_tools` to `source/`, `ensure_git`,
+   writes optional seed **through** `plan_tools`/`execute_tool`, runs,
+   verifies via `run_verify` + file existence.
+5. Kernel `set_tool_logs_dir` is the only new engine seam; it still
+   does not name a project.
+
+**KEEP:** engine/product one-way dependency; refuse-foreign-dir;
+journal-inside-project; jail cannot write `.arena`.
+**CHANGE:** timestamps in UTC (no `time.localtime`); seed is optional
+and written by the runtime through the tool path, not by CodingAgent.
+**DEFER:** CodingAgent, doctor, `arena-code` CLI, packaged calc plan,
+LLM providers.
+
+**Classification:** PRESERVE (layout + boundary) + RESTRUCTURE
+(seed-through-tools) + CHANGE (UTC ids, optional seed).
+
+---
+
 ## Not in this milestone (still)
 
-product/`arena-code` launcher, Kanban, external LLM providers,
-ArenaCognition, ZeroMQ. Kernel exposes the seams so those layers
-plug in without rewriting Actor, Parent, or Tools.
+`arena-code` CLI, doctor, CodingAgent, Kanban, external LLM providers,
+ArenaCognition, ZeroMQ.

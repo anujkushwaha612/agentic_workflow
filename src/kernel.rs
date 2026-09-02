@@ -726,6 +726,13 @@ impl Kernel {
         self.tools = Some(exec);
     }
 
+    /// Product sets this to `project/logs`. Engine never names a project.
+    pub fn set_tool_logs_dir(&mut self, dir: PathBuf) {
+        if let Some(ex) = self.tools.as_mut() {
+            ex.set_logs_dir(Some(dir));
+        }
+    }
+
     pub fn cognition_report(&self) -> JMap {
         let mut rows: Vec<JMap> = Vec::new();
         let mut by_prompt: BTreeMap<String, Vec<String>> = BTreeMap::new();

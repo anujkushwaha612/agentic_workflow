@@ -29,6 +29,7 @@ pub mod lifecycle;
 pub mod msg;
 pub mod parent;
 pub mod policy;
+pub mod product;
 pub mod registry;
 pub mod spawn;
 pub mod sys;
@@ -36,4 +37,4 @@ pub mod tools;
 // modules added incrementally as milestones land
 
 /// Runtime version of the product tier (`arena-code`).
-pub const RUNTIME_VERSION: &str = "0.3.0-m0m2-rust";
+pub const RUNTIME_VERSION: &str = "0.3.0-m11-rust";
