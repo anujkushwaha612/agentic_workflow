@@ -374,7 +374,46 @@ LLM providers.
 
 ---
 
+## ADR-018 — M12 engine operator CLI (`arena`)
+
+**Python:** `arena/cli.py` is 19 subcommands over a Kernel whose journal
+lives under `--root`. Status/why/trace reopen the same sqlite file.
+`from_journal` in Python is not quiet, so `status` can append
+`REPLAY_COMPLETE`. Chaos/accept are demo/parity, not the operator
+surface.
+
+**Architecture:** The engine owns an operator CLI. Product owns
+`arena-code`. CLI is a client of Kernel public methods; it does not
+hold Kernel internals, does not import product, and does not fake
+execution. Side files follow explicit `--root` (then journal dir),
+never CWD. Read commands reopen with **quiet** `from_journal` so they
+are pure projection and do not re-execute tools.
+
+**Rust:**
+1. `src/cli.rs` + `src/bin/arena.rs`. Std argv only (no clap).
+2. Resume-or-new: `--root/journal.db`. `status`/`why`/`trace`/`board`/
+   `inbox`/`agents`/`spawns`/`verify`/`watch` use quiet replay.
+3. `plan` is the rule-based planner with no Kernel and no disk. An
+   empty match is valid JSON (`tasks: []`), not an error.
+4. `submit` / `run` / `request` / pause-resume-terminate mutate a live
+   Kernel after quiet resume.
+5. `verify` checks the hash chain and that two quiet projections agree.
+6. `accept` / `chaos-report` / `chaos-run` are parsed and refused
+   (exit 64). They are not stubbed as passing.
+
+**KEEP:** 16 operator verbs; `--root` persistence; Kernel as the only
+runtime; watch polls the journal, not agents.
+**CHANGE:** quiet projection for read commands (Python appended
+`REPLAY_COMPLETE` on status).
+**DEFER:** `arena-code`, doctor, CodingAgent, chaos/accept scenarios,
+Kanban, LLM.
+
+**Classification:** PRESERVE (operator CLI over Kernel) + CHANGE
+(quiet reads) + DEFER (chaos/accept, product CLI).
+
+---
+
 ## Not in this milestone (still)
 
 `arena-code` CLI, doctor, CodingAgent, Kanban, external LLM providers,
-ArenaCognition, ZeroMQ.
+ArenaCognition, ZeroMQ, chaos/accept scenario packs.

@@ -4,8 +4,9 @@
 //!
 //! * engine modules ([`clock`], [`msg`], [`lifecycle`], [`journal`], [`graph`],
 //!   [`registry`], [`bus`], [`policy`], [`cognition`], [`actor`], [`kernel`],
-//!   [`control`], [`tools`], [`spawn`], [`parent`]) know nothing about
-//!   projects, prompts or CLIs;
+//!   [`control`], [`tools`], [`spawn`], [`parent`], [`cli`]) know nothing
+//!   about projects or prompts; [`cli`] is the engine operator surface
+//!   (`arena`), not the product launcher;
 //! * product modules ([`product`]) are the launcher layer (`arena-code`,
 //!   project workspaces, the coding agent, doctor);
 //! * nothing in the engine imports from the product — the dependency is
@@ -18,6 +19,7 @@
 
 pub mod actor;
 pub mod bus;
+pub mod cli;
 pub mod clock;
 pub mod cognition;
 pub mod control;
@@ -37,4 +39,4 @@ pub mod tools;
 // modules added incrementally as milestones land
 
 /// Runtime version of the product tier (`arena-code`).
-pub const RUNTIME_VERSION: &str = "0.3.0-m11-rust";
+pub const RUNTIME_VERSION: &str = "0.3.0-m12-rust";

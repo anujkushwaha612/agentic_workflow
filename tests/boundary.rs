@@ -7,6 +7,7 @@ use std::path::Path;
 const ENGINE: &[&str] = &[
     "src/actor.rs",
     "src/bus.rs",
+    "src/cli.rs",
     "src/clock.rs",
     "src/cognition.rs",
     "src/control.rs",

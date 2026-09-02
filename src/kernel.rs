@@ -327,6 +327,31 @@ impl Kernel {
         self.root.as_deref()
     }
 
+    /// Operator CLI and reports read these; they do not hold a second copy.
+    pub fn task_text(&self) -> &str {
+        &self.task_text
+    }
+
+    pub fn graph(&self) -> &DependencyGraph {
+        &self.graph
+    }
+
+    pub fn registry(&self) -> &AgentRegistry {
+        &self.registry
+    }
+
+    pub fn journal_file(&self) -> Option<&Path> {
+        match &self.journal.path {
+            JournalPath::File(p) => Some(p.as_path()),
+            JournalPath::Memory => None,
+        }
+    }
+
+    /// Control-plane inbox (`var/inbox.jsonl` under the side-file anchor).
+    pub fn inbox_file(&self) -> Option<PathBuf> {
+        self.side_anchor.as_ref().map(|a| a.join("var/inbox.jsonl"))
+    }
+
     // --------------------------------------------------------------- logging
 
     pub fn log(&mut self, text: &str) {
