@@ -4,8 +4,8 @@
 //!
 //! * engine modules ([`clock`], [`msg`], [`lifecycle`], [`journal`], [`graph`],
 //!   [`registry`], [`bus`], [`policy`], [`cognition`], [`actor`], [`kernel`],
-//!   [`control`], [`tools`]) know nothing about projects, prompts or
-//!   CLIs. Parent/Spawn land in later milestones;
+//!   [`control`], [`tools`], [`spawn`], [`parent`]) know nothing about
+//!   projects, prompts or CLIs;
 //! * product modules ([`product`]) are the launcher layer (`arena-code`,
 //!   project workspaces, the coding agent, doctor);
 //! * nothing in the engine imports from the product — the dependency is
@@ -27,8 +27,10 @@ pub mod journal;
 pub mod kernel;
 pub mod lifecycle;
 pub mod msg;
+pub mod parent;
 pub mod policy;
 pub mod registry;
+pub mod spawn;
 pub mod sys;
 pub mod tools;
 // modules added incrementally as milestones land

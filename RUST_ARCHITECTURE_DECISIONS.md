@@ -256,8 +256,52 @@ semantics PRESERVE.
 
 ---
 
+## ADR-015 — M9 Parent / spawn funnel
+
+**Python:** `ParentArena` holds a live `kernel` pointer. `decide_spawn` is
+intake → evaluate → commit. `Kernel.submit` calls the planner.
+`Kernel.schedule` is `parent.schedule`. Recovery rehydrates the ledger
+from `fold()["requests"]`. `ControlPlane` decisions `approve_spawn` /
+`amend` were swallowed by Kernel's force_* parser in the Rust seam.
+
+**Architecture:** Parent is a Kernel collaborator, not an Actor method
+and not a Kernel field pointing back at Kernel. The funnel order is a
+safety property. Graph.amend before any agent. Quiet recovery must not
+re-approve spent rids.
+
+**Rust:**
+1. `src/spawn.rs` — request FSM, catalog, fingerprint, ledger.
+2. `src/parent.rs` — `Parent` (ledger/catalog/planner/stats) with **no
+   Kernel pointer**. Funnel methods are `impl Kernel`.
+3. `Kernel.submit` runs `RuleBasedPlanner` (engine, not product). Empty
+   match invents nothing.
+4. `Kernel.schedule` drains spawn requests, then assigns unowned
+   pending (cover, then idle, then spawn-under-cap).
+5. Assignment is claim-first (`DUPLICATE_CLAIM` on loss).
+6. `AGENT_REGISTERED` is journalled before `make_actor`.
+7. `from_journal` rehydrates the ledger **using the fold rid** (CHANGE
+   vs Python, which re-issued `rq-NNNN` and could collide).
+8. Journal fold projects `SPAWN_REJECTED` so DEDUPLICATED/REJECTED
+   survive replay (Python fold omitted this).
+9. `ControlDecision::{ApproveSpawn, Amend}` are parsed, not dropped.
+10. Plan cycle rolls the graph back (CHANGE vs Python, which left the
+    cyclic graph in place).
+
+**KEEP:** M1–M8 modules, Intent apply IR, WorldView/RuntimeEffects,
+per-agent cognition, quiet recovery purity, worker cap ≠ agent count.
+**REFACTOR:** `submit`/`schedule`/`assign`, ControlPlane spawn/amend,
+journal fold of spawn rejects, ledger rid on rehydrate.
+**DEFER:** real Tools, workspace/Git, LLM providers, ArenaCognition,
+ZeroMQ, Kanban, arena-code (M10+).
+
+**Classification:** RESTRUCTURE (ownership) + PRESERVE (funnel
+semantics) + CHANGE (recovery rid, plan-cycle rollback, SPAWN_REJECTED
+fold).
+
+---
+
 ## Not in this milestone (still)
 
-Parent, Spawn execution, Tools implementation, product/`arena-code`,
-Kanban, external LLM providers, ArenaCognition, ZeroMQ. Kernel exposes
-the seams so those layers plug in without rewriting Actor or Kernel.
+Tools implementation, product/`arena-code`, Kanban, external LLM
+providers, ArenaCognition, ZeroMQ. Kernel exposes the seams so those
+layers plug in without rewriting Actor or Parent.

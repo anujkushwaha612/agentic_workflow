@@ -286,14 +286,17 @@ fn spawn_request_queues_without_parent() {
     )
     .unwrap();
     k.run(2);
+    // M9: schedule drains the queue through the spawn funnel. A payments
+    // specialist is not covered by backend_01, so a new agent is staffed.
     assert!(
-        !k.spawn_requests.is_empty(),
-        "specialist policy must queue a SPAWN_AGENT_REQUEST"
-    );
-    assert_eq!(
-        k.registry.active().len(),
-        1,
-        "Parent is deferred: no new agent"
+        k.registry.active().len() >= 2
+            || k.parent
+                .ledger
+                .counts()
+                .get("total")
+                .and_then(|v| v.as_int())
+                >= Some(1),
+        "spawn funnel must record or staff the specialist request"
     );
     let _ = std::fs::remove_dir_all(&d);
 }

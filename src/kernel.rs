@@ -13,10 +13,9 @@
 //!                     Cognition   (proposes only)
 //! ```
 //!
-//! Parent, Spawn and Tools are **seams**, not residents. Spawn requests land
-//! in a queue; tool execution is behind [`crate::tools::ToolExecutor`];
-//! cortex files enter through [`crate::control::ControlPlane`], not as
-//! tick-internal JSONL parsing.
+//! Parent is a Kernel collaborator (ledger + funnel), not an Actor method.
+//! Tools remain a seam behind [`crate::tools::ToolExecutor`]; cortex files
+//! enter through [`crate::control::ControlPlane`].
 //!
 //! Ownership: `&mut Kernel` flows through the tick. An actor is `remove`d
 //! from the map, `run_step(self)`'d, then reinserted — no `Arc<Mutex<_>>`,
@@ -37,8 +36,10 @@ use crate::ids::{AgentId, TaskId};
 use crate::journal::{EventFilter, Journal, JournalError, JournalPath};
 use crate::lifecycle::{AgentState, Lifecycle};
 use crate::msg::{EventType, Message};
+use crate::parent::Parent;
 use crate::policy::{is_sleeping_action, make_policy};
 use crate::registry::{emit_registered, emit_terminated, AgentRecord, AgentRegistry, SpawnBudget};
+use crate::spawn::SpawnRequest;
 use crate::sys::json::{parse, py_round, JMap, JValue};
 use crate::tools::{self, ToolExecutor};
 
@@ -152,15 +153,15 @@ impl KernelOpts {
 // ------------------------------------------------------------------ kernel
 
 pub struct Kernel {
-    journal: Journal,
-    graph: DependencyGraph,
-    registry: AgentRegistry,
+    pub(crate) journal: Journal,
+    pub(crate) graph: DependencyGraph,
+    pub(crate) registry: AgentRegistry,
     bus: Bus,
-    clock: Clock,
+    pub(crate) clock: Clock,
     actors: BTreeMap<String, AgentActor>,
     artifacts: BTreeMap<String, ArtifactMeta>,
-    tick: i64,
-    task_text: String,
+    pub(crate) tick: i64,
+    pub(crate) task_text: String,
     work_unit: f64,
     default_policy: String,
     role_policies: BTreeMap<String, String>,
@@ -175,8 +176,9 @@ pub struct Kernel {
     stalled: bool,
     log_lines: Vec<String>,
     parent_inbox: Vec<JMap>,
-    spawn_requests: Vec<Message>,
-    feature_requests: Vec<JMap>,
+    pub(crate) spawn_requests: Vec<Message>,
+    pub(crate) feature_requests: Vec<JMap>,
+    pub(crate) parent: Parent,
     deadlocks: Vec<Vec<String>>,
     resident_loops: i64,
     injected_rows: i64,
@@ -233,6 +235,7 @@ impl Kernel {
             parent_inbox: Vec::new(),
             spawn_requests: Vec::new(),
             feature_requests: Vec::new(),
+            parent: Parent::default(),
             deadlocks: Vec::new(),
             resident_loops: 0,
             injected_rows: 0,
@@ -281,6 +284,20 @@ impl Kernel {
             ControlDecision::ForceTerminate { agent_id } => {
                 self.terminate_agent(&agent_id, "cortex force_terminate");
             }
+            ControlDecision::ApproveSpawn { rid, reason, .. } => {
+                self.honour_approve_spawn(&rid, &reason);
+            }
+            ControlDecision::Amend {
+                tasks,
+                deps,
+                correlation_id,
+            } => {
+                let specs: Vec<TaskSpec> = tasks
+                    .into_iter()
+                    .filter_map(|m| task_from_map(&m))
+                    .collect();
+                let _ = self.honour_amend(specs, &deps, &correlation_id);
+            }
         }
     }
 
@@ -317,7 +334,7 @@ impl Kernel {
             .push(format!("[{:7.2}] {text}", self.clock.now()));
     }
 
-    fn emit(
+    pub(crate) fn emit(
         &mut self,
         etype: EventType,
         actor: &str,
@@ -326,9 +343,32 @@ impl Kernel {
         fields: JMap,
         task_id: Option<&str>,
     ) {
+        self.emit_corr(etype, actor, target, body, fields, task_id, None);
+    }
+
+    #[allow(clippy::too_many_arguments)] // arity mirrors Journal.emit
+    pub(crate) fn emit_corr(
+        &mut self,
+        etype: EventType,
+        actor: &str,
+        target: &str,
+        body: &str,
+        fields: JMap,
+        task_id: Option<&str>,
+        correlation_id: Option<&str>,
+    ) {
         self.sync_now();
         self.journal.emit(
-            etype, actor, target, body, fields, task_id, None, None, None, 0,
+            etype,
+            actor,
+            target,
+            body,
+            fields,
+            task_id,
+            None,
+            correlation_id,
+            None,
+            0,
         );
     }
 
@@ -667,10 +707,29 @@ impl Kernel {
         epoch: i64,
         spawned_by: &str,
     ) -> Result<AgentId, crate::registry::RegistryError> {
+        self.register_agent_with_reason(agent_id, role, skills, epoch, spawned_by, "")
+    }
+
+    pub fn register_agent_with_reason(
+        &mut self,
+        agent_id: &str,
+        role: &str,
+        skills: &[&str],
+        epoch: i64,
+        spawned_by: &str,
+        spawn_reason: &str,
+    ) -> Result<AgentId, crate::registry::RegistryError> {
         self.sync_now();
-        let id =
-            self.registry
-                .register(agent_id, role, skills, epoch, spawned_by, "", None, &[])?;
+        let id = self.registry.register(
+            agent_id,
+            role,
+            skills,
+            epoch,
+            spawned_by,
+            spawn_reason,
+            None,
+            &[],
+        )?;
         if let Some(rec) = self.registry.get(agent_id) {
             let rec = rec.clone();
             emit_registered(&mut self.journal, &rec);
@@ -760,91 +819,19 @@ impl Kernel {
         Ok(out)
     }
 
-    /// `submit(text)` without a planner cannot invent an org. Returns empty.
+    /// Staff a graph from task text. The planner is engine (not product);
+    /// unmatched text invents nothing.
     pub fn submit(&mut self, text: &str) -> JMap {
-        self.task_text = text.to_string();
-        let mut out = JMap::new();
-        out.insert("tasks".into(), JValue::Int(0));
-        out.insert("agents".into(), JValue::Arr(vec![]));
-        out.insert(
-            "detail".into(),
-            JValue::Str("planner deferred to M9 Parent".into()),
-        );
-        out
+        self.submit_text(text)
     }
 
     pub fn assign(&mut self, task_id: &str, agent_id: &str) -> bool {
-        let Some(t) = self.graph.tasks.get_mut(&TaskId::new(task_id)) else {
-            return false;
-        };
-        if !t.is_open() {
-            return false;
-        }
-        t.owner = Some(AgentId::new(agent_id));
-        if t.status == TaskStatus::Pending {
-            t.status = TaskStatus::Assigned;
-        }
-        let key = t.key();
-        let _ = self
-            .journal
-            .claim(&key, agent_id, Some(task_id), self.clock.now());
-        if let Some(rec) = self.registry.get_mut(agent_id) {
-            match &rec.task_id {
-                None => rec.task_id = Some(TaskId::new(task_id)),
-                Some(cur)
-                    if cur.as_str() != task_id
-                        && !rec.task_queue.iter().any(|t| t.as_str() == task_id) =>
-                {
-                    rec.task_queue.push(TaskId::new(task_id));
-                }
-                _ => {}
-            }
-            self.registry.version += 1;
-        }
-        let mut fields = JMap::new();
-        fields.insert("owner".into(), JValue::Str(agent_id.into()));
-        self.emit(
-            EventType::TaskAssigned,
-            "parent",
-            agent_id,
-            &format!("{task_id} assigned"),
-            fields,
-            Some(task_id),
-        );
-        // COMPLETED → INITIALIZING re-queue edge
-        if self.registry.get(agent_id).map(|r| r.lifecycle.state) == Some(AgentState::Completed) {
-            self.transition(agent_id, AgentState::Initializing, "new assignment");
-        }
-        true
+        self.assign_claimed(task_id, agent_id, &format!("{task_id} assigned"), "")
     }
 
-    /// Assign unowned pending tasks to idle agents of the matching role.
+    /// Drain spawn funnel, then assign unowned pending work.
     pub fn schedule(&mut self) {
-        let pending: Vec<(String, String)> = self
-            .graph
-            .tasks
-            .values()
-            .filter(|t| t.status == TaskStatus::Pending && t.owner.is_none() && t.is_open())
-            .map(|t| (t.task_id.as_str().to_string(), t.role.clone()))
-            .collect();
-        for (tid, role) in pending {
-            let candidate = self
-                .registry
-                .agents
-                .iter()
-                .find(|a| {
-                    a.role == role
-                        && a.task_id.is_none()
-                        && matches!(
-                            a.lifecycle.state,
-                            AgentState::Idle | AgentState::Initializing | AgentState::Created
-                        )
-                })
-                .map(|a| a.agent_id.as_str().to_string());
-            if let Some(aid) = candidate {
-                self.assign(&tid, &aid);
-            }
-        }
+        let _ = self.parent_schedule();
     }
 
     // -------------------------------------------------------------- bus
@@ -1353,8 +1340,27 @@ impl Kernel {
             .map(|c| c.poll_decisions())
             .unwrap_or_default();
         for d in decisions {
-            self.apply_decision(d);
+            match d {
+                ControlDecision::ForceState { .. } | ControlDecision::ForceTerminate { .. } => {
+                    self.apply_decision(d);
+                }
+                ControlDecision::ApproveSpawn { rid, reason, .. } => {
+                    self.honour_approve_spawn(&rid, &reason);
+                }
+                ControlDecision::Amend {
+                    tasks,
+                    deps,
+                    correlation_id,
+                } => {
+                    let specs: Vec<TaskSpec> = tasks
+                        .into_iter()
+                        .filter_map(|m| task_from_map(&m))
+                        .collect();
+                    let _ = self.honour_amend(specs, &deps, &correlation_id);
+                }
+            }
         }
+        let _ = self.honour_pending_escalations();
     }
 
     pub fn record_escalation(&mut self, note: JMap) {
@@ -1681,24 +1687,7 @@ impl Kernel {
     }
 
     pub fn spawn_stats_view(&self) -> JMap {
-        // Parent recounts from the ledger (M9). Until then, zeros plus
-        // whatever the fold restored.
-        let keys = [
-            "received",
-            "approved",
-            "rejected",
-            "deduplicated",
-            "escalated",
-            "deferred",
-            "reused",
-            "spawned_by_agents",
-            "cycles_rejected",
-        ];
-        let mut m = JMap::new();
-        for k in keys {
-            m.insert(k.into(), JValue::Int(0));
-        }
-        m
+        self.parent.spawn_stats.to_map()
     }
 
     pub fn metrics(&self) -> JMap {
@@ -1754,6 +1743,41 @@ impl Kernel {
         m.insert(
             "requests_received".into(),
             st.get("received").cloned().unwrap_or(JValue::Int(0)),
+        );
+        m.insert(
+            "requests_approved".into(),
+            st.get("approved").cloned().unwrap_or(JValue::Int(0)),
+        );
+        m.insert(
+            "requests_rejected".into(),
+            st.get("rejected").cloned().unwrap_or(JValue::Int(0)),
+        );
+        m.insert(
+            "requests_deduplicated".into(),
+            st.get("deduplicated").cloned().unwrap_or(JValue::Int(0)),
+        );
+        m.insert(
+            "requests_escalated".into(),
+            st.get("escalated").cloned().unwrap_or(JValue::Int(0)),
+        );
+        m.insert(
+            "requests_deferred".into(),
+            st.get("deferred").cloned().unwrap_or(JValue::Int(0)),
+        );
+        m.insert(
+            "reuses".into(),
+            st.get("reused").cloned().unwrap_or(JValue::Int(0)),
+        );
+        m.insert(
+            "by_rule".into(),
+            JValue::Obj(
+                self.parent
+                    .ledger
+                    .by_rule()
+                    .into_iter()
+                    .map(|(k, v)| (k, JValue::Int(v)))
+                    .collect(),
+            ),
         );
         m.insert(
             "remaining_capacity".into(),
@@ -2348,6 +2372,35 @@ impl Kernel {
 
         if let Some(JValue::Obj(reqs)) = fold.get("requests") {
             k.request_fold = reqs.clone();
+            for (rid, e) in reqs {
+                if k.parent.ledger.get(rid).is_some() {
+                    continue;
+                }
+                let mut req = spawn_request_from_fold(e);
+                req.rid = rid.clone();
+                let state = e
+                    .get("state")
+                    .and_then(|v| v.as_str())
+                    .and_then(crate::spawn::RequestState::parse)
+                    .unwrap_or(crate::spawn::RequestState::Received);
+                let rule = e.str_or("rule", "");
+                let owner = e
+                    .get("owner")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string());
+                let spawned = e
+                    .get("spawned_agent_id")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string());
+                let task_id = e
+                    .get("task_id")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string());
+                k.parent
+                    .ledger
+                    .rehydrate(req, state, &rule, owner, spawned, task_id);
+            }
+            k.parent.recount_spawn_stats();
         }
 
         if let Some(JValue::Obj(waits)) = fold.get("waits") {
@@ -2420,6 +2473,45 @@ impl Kernel {
         }
         Ok(k)
     }
+}
+
+fn spawn_request_from_fold(e: &JValue) -> SpawnRequest {
+    SpawnRequest {
+        requester_agent_id: e.str_or("requester", ""),
+        requested_role: e.str_or("requested_role", ""),
+        reason: e.str_or("reason", ""),
+        required_skills: jstr_list(e.get("required_skills")),
+        estimated_work: e
+            .get("estimated_work")
+            .and_then(|v| v.as_f64())
+            .unwrap_or(0.0),
+        required_inputs: jstr_list(e.get("required_inputs")),
+        expected_outputs: jstr_list(e.get("expected_outputs")),
+        parent_task_id: e
+            .get("parent_task_id")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string()),
+        correlation_id: e.str_or("correlation_id", ""),
+        capability_class: e.str_or("capability_class", "general"),
+        at_tick: e.get("at_tick").and_then(|v| v.as_int()).unwrap_or(0),
+        rid: e.str_or("rid", ""),
+        ..Default::default()
+    }
+}
+
+fn task_from_map(m: &JMap) -> Option<TaskSpec> {
+    let tid = m.get("task_id").and_then(|v| v.as_str())?;
+    let mut t = TaskSpec::new(
+        tid,
+        m.get("title").and_then(|v| v.as_str()).unwrap_or(tid),
+        m.get("role").and_then(|v| v.as_str()).unwrap_or(""),
+    );
+    t.skills = jstr_list(m.get("skills"));
+    t.produces = jstr_list(m.get("produces"));
+    t.consumes = jstr_list(m.get("consumes"));
+    t.claims = jstr_list(m.get("claims"));
+    t.est_work = m.get("est_work").and_then(|v| v.as_f64()).unwrap_or(1.0);
+    Some(t)
 }
 
 fn jstr_list(v: Option<&JValue>) -> Vec<String> {

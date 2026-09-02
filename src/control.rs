@@ -15,12 +15,27 @@ use crate::lifecycle::AgentState;
 use crate::sys::json::{parse, JMap, JValue};
 
 /// A sanctioned override the runtime may apply at the start of a tick.
-/// Spawn-approval and graph amend belong to Parent (M9) and are not
-/// interpreted here.
-#[derive(Debug, Clone, PartialEq, Eq)]
+/// Lifecycle force_* is Kernel; approve_spawn / amend are honoured by Parent.
+#[derive(Debug, Clone, PartialEq)]
 pub enum ControlDecision {
-    ForceState { agent_id: String, state: AgentState },
-    ForceTerminate { agent_id: String },
+    ForceState {
+        agent_id: String,
+        state: AgentState,
+    },
+    ForceTerminate {
+        agent_id: String,
+    },
+    ApproveSpawn {
+        rid: String,
+        reason: String,
+        agent: String,
+        role: String,
+    },
+    Amend {
+        tasks: Vec<JMap>,
+        deps: JMap,
+        correlation_id: String,
+    },
 }
 
 /// How the world above Kernel talks to it each tick.
@@ -81,6 +96,33 @@ impl FileControlPlane {
             "force_terminate" => Some(ControlDecision::ForceTerminate {
                 agent_id: v.str_or("agent_id", ""),
             }),
+            "approve_spawn" => Some(ControlDecision::ApproveSpawn {
+                rid: v.str_or("rid", ""),
+                reason: v.str_or("reason", ""),
+                agent: v.str_or("agent", ""),
+                role: v.str_or("role", ""),
+            }),
+            "amend" => {
+                let tasks = match v.get("tasks") {
+                    Some(JValue::Arr(a)) => a
+                        .iter()
+                        .filter_map(|x| match x {
+                            JValue::Obj(m) => Some(m.clone()),
+                            _ => None,
+                        })
+                        .collect(),
+                    _ => Vec::new(),
+                };
+                let deps = match v.get("deps") {
+                    Some(JValue::Obj(m)) => m.clone(),
+                    _ => JMap::new(),
+                };
+                Some(ControlDecision::Amend {
+                    tasks,
+                    deps,
+                    correlation_id: v.str_or("correlation_id", ""),
+                })
+            }
             _ => None,
         }
     }

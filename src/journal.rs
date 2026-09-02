@@ -1362,6 +1362,26 @@ fn fold_event(state: &mut FoldState, row: &EventRow) {
                 obj.insert("rule".into(), JValue::Str("ESCALATE".into()));
             }
         }
+        E::SpawnRejected => {
+            let rid = p.str_or("rid", "");
+            if rid.is_empty() {
+                return;
+            }
+            let entry = state
+                .requests
+                .entry(rid)
+                .or_insert_with(|| JValue::Obj(default_request_entry(&p, actor, row)));
+            if let JValue::Obj(obj) = entry {
+                let rule = p.str_or("rule", "");
+                obj.insert("rule".into(), JValue::Str(rule.clone()));
+                let st = if rule == "DEDUPLICATE" {
+                    "DEDUPLICATED"
+                } else {
+                    "REJECTED"
+                };
+                obj.insert("state".into(), JValue::Str(st.into()));
+            }
+        }
         _ => {}
     }
 }
