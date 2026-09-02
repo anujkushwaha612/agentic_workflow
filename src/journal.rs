@@ -1005,17 +1005,16 @@ fn fold_event(state: &mut FoldState, row: &EventRow) {
         }
         E::Stats => {
             if let Some(a) = state.agents.get_mut(&AgentId::new(actor)) {
-                a.insert(
-                    "msgs_sent".into(),
-                    p.get("msgs_sent").cloned().unwrap_or(JValue::Int(0)),
-                );
-                a.insert(
-                    "work_done".into(),
-                    JValue::Float(p.get("work_done").and_then(JValue::as_f64).unwrap_or(0.0)),
-                );
-                let candidate = p.get("steps_run").and_then(JValue::as_int).unwrap_or(0);
-                let existing = a.get("steps_run").and_then(JValue::as_int).unwrap_or(0);
-                a.insert("steps_run".into(), JValue::Int(candidate.max(existing)));
+                if let Some(v) = p.get("msgs_sent") {
+                    a.insert("msgs_sent".into(), v.clone());
+                }
+                if let Some(v) = p.get("work_done") {
+                    a.insert("work_done".into(), v.clone());
+                }
+                if let Some(candidate) = p.get("steps_run").and_then(JValue::as_int) {
+                    let existing = a.get("steps_run").and_then(JValue::as_int).unwrap_or(0);
+                    a.insert("steps_run".into(), JValue::Int(candidate.max(existing)));
+                }
             }
         }
         E::ResourceUpdated => {

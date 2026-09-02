@@ -23,6 +23,7 @@ pub mod cognition;
 pub mod graph;
 pub mod ids;
 pub mod journal;
+pub mod kernel;
 pub mod lifecycle;
 pub mod msg;
 pub mod policy;

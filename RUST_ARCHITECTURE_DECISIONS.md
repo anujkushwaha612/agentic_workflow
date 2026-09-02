@@ -150,9 +150,81 @@ PRESERVE: explicit root > journal directory > write nothing (never CWD).
 
 ---
 
-## Not in this milestone
+## ADR-009 — Kernel is composition root, not a god object
 
-Parent, Spawn, Tools, product/`arena-code`, Kanban, external LLM
-providers, ZeroMQ. Actor exposes the seams (`ActorRuntime::execute_tool`,
-`bind_cognition`, spawn-request as a Message) so those layers plug in
-without rewriting Actor.
+**Python:** `Kernel` owns clock/journal/graph/registry/bus/actors *and*
+Parent, Spawn, tools, planner, workspaces, cortex file IO.
+
+**Rust:** Kernel owns mutable runtime state and implements `ActorRuntime`.
+Parent, Spawn, Tools, planner, LLM providers are **seams**:
+`spawn_requests` queue, `ToolExecutor` trait, `CognitionFactory`,
+`submit(text)` returns empty. Cortex `force_state` / `force_terminate`
+stay on the tick loop so a later Parent does not have to own scheduling.
+
+**Classification:** RESTRUCTURE.
+
+---
+
+## ADR-010 — Actor/Kernel ownership (remove → run_step → reinsert)
+
+**Python:** `AgentActor.kernel` is a live pointer; tick holds both.
+
+**Rust:** `&mut Kernel` is the tick. `step_actor` `remove`s the actor,
+calls `run_step(&mut self)`, reinserts. No `Arc<Mutex<Everything>>`,
+no kernel field on `AgentActor`. Two kernels never share maps.
+
+**Classification:** RESTRUCTURE (safety).
+
+---
+
+## ADR-011 — Quiet `from_journal` is a pure projection
+
+**Python:** recovery always emits `REPLAY_COMPLETE`.
+
+**Rust:** `from_journal(path, quiet, opts)`. Quiet: no journal append,
+no lifecycle side effects, no tools, no publish, no workspace mutation.
+Loud appends exactly one `REPLAY_COMPLETE`. Live snapshot == recovered
+snapshot (agents/tasks/artifacts/tick). Side-file anchor is
+explicit root > journal dir > write nothing (never CWD) — ADR-008.
+
+Counters that are not evented (`work_done`, `msgs_sent`) overlay from
+the latest `SNAPSHOT`. `STATS` fold no longer zeros missing fields
+(Python STATS payloads often omit them).
+
+**Classification:** CHANGE (correctness of recovery).
+
+---
+
+## ADR-012 — Cognition factory is per-agent
+
+**Python:** role → one policy class; instances can be accidentally shared.
+
+**Rust:** `CognitionFactory` is `Fn(&str) -> Box<dyn Cognition>`. The
+agent id is an argument so `PolicyCognition` fingerprints
+(`class|agent_id`) cannot alias. Kernel never stores a shared brain.
+
+**Classification:** RESTRUCTURE.
+
+---
+
+## ADR-013 — Tick order (confirmed)
+
+ADR-007's sequence is implemented verbatim:
+
+tick++ / clock / `bus.reset_tick` → cortex `force_state`/`force_terminate`
+→ expire waits → deadlock → schedule → eligible (least `steps_run`,
+then woke, cap = `max_concurrent_workers` not agent count) → inbox drain
+then one `run_step` → reap → stop-if-done → checkpoint at run boundary.
+
+Worker cap ≠ agent count. COMPLETED + backlog is eligible again.
+PAUSED is not.
+
+**Classification:** PRESERVE.
+
+---
+
+## Not in this milestone (still)
+
+Parent, Spawn execution, Tools, product/`arena-code`, Kanban, external
+LLM providers, ArenaCognition, ZeroMQ. Kernel exposes the seams so
+those layers plug in without rewriting Actor or Kernel.
