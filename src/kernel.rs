@@ -1918,6 +1918,14 @@ impl Kernel {
             "workers_max".into(),
             JValue::Int(self.registry.budget.max_concurrent_workers),
         );
+        let working_n = by_state
+            .get("WORKING")
+            .and_then(|v| v.as_int())
+            .unwrap_or(0);
+        m.insert(
+            "worker_slots_in_use".into(),
+            JValue::Int(working_n.min(self.registry.budget.max_concurrent_workers)),
+        );
         m.insert(
             "open_graph_tasks".into(),
             JValue::Int(self.graph.tasks.values().filter(|t| t.is_open()).count() as i64),
@@ -1942,8 +1950,17 @@ impl Kernel {
             "blocked",
             "escalated",
             "completed",
+            "requests_received",
+            "requests_approved",
+            "requests_rejected",
+            "requests_deduplicated",
+            "requests_escalated",
+            "reuses",
+            "generation_epoch_max",
+            "spawn_depth_hist",
             "remaining_capacity",
             "agent_budget",
+            "worker_slots_in_use",
             "workers_max",
             "open_graph_tasks",
         ];

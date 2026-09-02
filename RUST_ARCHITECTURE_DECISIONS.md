@@ -399,12 +399,16 @@ are pure projection and do not re-execute tools.
    Kernel after quiet resume.
 5. `verify` checks the hash chain and that two quiet projections agree.
 6. `accept` / `chaos-report` / `chaos-run` are parsed and refused
-   (exit 64). They are not stubbed as passing.
+   (exit 1). They are not stubbed as passing.
+7. Exit codes match Python argparse: 0 success, 1 operational/refusal,
+   2 usage (and unschedulable submit). Engine modules do not import
+   `crate::cli` or `crate::product`.
 
 **KEEP:** 16 operator verbs; `--root` persistence; Kernel as the only
 runtime; watch polls the journal, not agents.
 **CHANGE:** quiet projection for read commands (Python appended
-`REPLAY_COMPLETE` on status).
+`REPLAY_COMPLETE` on status); status is Kernel JSON, board/run print
+`report()`.
 **DEFER:** `arena-code`, doctor, CodingAgent, chaos/accept scenarios,
 Kanban, LLM.
 

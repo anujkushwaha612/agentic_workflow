@@ -64,11 +64,11 @@ fn submit_then_status_across_processes() {
     let rs = root.to_str().unwrap();
     let (c, o, e) = invoke(&["--root", rs, "submit", "postgres schema and REST API"]);
     assert_eq!(c, 0, "{e}\n{o}");
-    assert!(o.contains("\"tasks\""));
+    assert!(o.contains("planned"));
     let (c, o, e) = invoke(&["--root", rs, "status"]);
     assert_eq!(c, 0, "{e}");
-    assert!(o.contains("KERNEL"));
-    assert!(o.contains("t_db_schema") || o.contains("t_api"));
+    let v = parse(o.trim()).expect("status json");
+    assert!(v.get("agents").is_some() || v.get("tasks").is_some(), "{o}");
 }
 
 #[test]
@@ -81,26 +81,13 @@ fn run_completes_and_verify_is_quiet() {
     assert!(c == 0 || o.contains("\"done\""), "code={c} err={e} out={o}");
     let (c1, o1, e1) = invoke(&["--root", rs, "status"]);
     assert_eq!(c1, 0, "{e1}");
-    let events_line = o1
-        .lines()
-        .find(|l| l.contains("events="))
-        .unwrap_or("")
-        .to_string();
     let (c2, o2, e2) = invoke(&["--root", rs, "status"]);
     assert_eq!(c2, 0, "{e2}");
-    let events_line2 = o2
-        .lines()
-        .find(|l| l.contains("events="))
-        .unwrap_or("")
-        .to_string();
-    assert_eq!(
-        events_line, events_line2,
-        "quiet from_journal must not append on status"
-    );
+    assert_eq!(o1, o2, "quiet from_journal must not append on status");
     let (c, o, e) = invoke(&["--root", rs, "verify"]);
     assert_eq!(c, 0, "{e}\n{o}");
-    assert!(o.contains("\"chain_ok\": true") || o.contains("\"chain_ok\":true"));
-    assert!(o.contains("\"replay_ok\": true") || o.contains("\"replay_ok\":true"));
+    assert!(o.contains("chain: VALID"), "{o}");
+    assert!(o.contains("replay parity : OK"), "{o}");
 }
 
 #[test]
@@ -109,7 +96,7 @@ fn run_without_submit_fails() {
     let rs = root.to_str().unwrap();
     let (c, _, e) = invoke(&["--root", rs, "run", "--ticks", "4"]);
     assert_eq!(c, 1);
-    assert!(e.contains("nothing to run"));
+    assert!(e.contains("nothing submitted"));
 }
 
 #[test]
@@ -121,7 +108,7 @@ fn watch_once_and_why_unknown() {
     assert_eq!(c, 0, "{e}");
     assert!(o.contains("tick="));
     let (c, o, e) = invoke(&["--root", rs, "why", "no_such_agent"]);
-    assert_eq!(c, 0, "{e}");
+    assert_eq!(c, 1, "{e}");
     assert!(o.contains("unknown agent"));
 }
 
@@ -132,11 +119,21 @@ fn request_pause_resume_terminate() {
     let (c, o, e) = invoke(&["--root", rs, "submit", "postgres schema"]);
     assert_eq!(c, 0, "{e}\n{o}");
     let (c, o, e) = invoke(&[
-        "--root", rs, "request", "--agent", "parent", "--role", "testing", "--reason", "need qa",
-        "--work", "2",
+        "--root",
+        rs,
+        "request",
+        "--agent",
+        "parent",
+        "--role",
+        "testing",
+        "--reason",
+        "need qa",
+        "--work",
+        "2",
+        "--no-run",
     ]);
-    assert_eq!(c, 0, "{e}");
-    assert!(o.contains("queued spawn request"));
+    assert_eq!(c, 0, "{e}\n{o}");
+    assert!(o.contains("injected"), "{o}");
     let (c, o, e) = invoke(&["--root", rs, "spawns"]);
     assert_eq!(c, 0, "{e}");
     assert!(o.contains("SPAWNS"));
@@ -151,13 +148,13 @@ fn request_pause_resume_terminate() {
         .unwrap_or("database_01");
     let (c, o, e) = invoke(&["--root", rs, "pause", agent]);
     assert_eq!(c, 0, "{e}");
-    assert!(o.contains("paused"));
+    assert!(o.contains("pause") && o.contains("ok"), "{o}");
     let (c, o, e) = invoke(&["--root", rs, "resume", agent]);
     assert_eq!(c, 0, "{e}");
-    assert!(o.contains("resumed"));
+    assert!(o.contains("resume") && o.contains("ok"), "{o}");
     let (c, o, e) = invoke(&["--root", rs, "terminate", agent, "cli-test"]);
     assert_eq!(c, 0, "{e}");
-    assert!(o.contains("terminated"));
+    assert!(o.contains("terminate") && o.contains("ok"), "{o}");
 }
 
 #[test]
@@ -167,23 +164,27 @@ fn board_inbox_trace_json_agents() {
     let _ = invoke(&["--root", rs, "submit", "postgres schema"]);
     let (c, o, e) = invoke(&["--root", rs, "board"]);
     assert_eq!(c, 0, "{e}");
-    assert!(o.contains("BOARD"));
+    assert!(o.contains("tick=") || o.contains("KERNEL") || o.contains("t_"));
     let (c, o, e) = invoke(&["--root", rs, "inbox"]);
     assert_eq!(c, 0, "{e}");
     assert!(o.contains("empty") || !o.is_empty());
     let (c, o, e) = invoke(&["--root", rs, "agents", "--json"]);
     assert_eq!(c, 0, "{e}");
-    let v = parse(o.trim()).expect("metrics json");
-    assert!(v.get("tick").is_some());
+    let v = parse(o.trim()).expect("agents json");
+    assert!(
+        v.get("roster").is_some() || v.get("monitoring").is_some(),
+        "{o}"
+    );
     let (c, _, e) = invoke(&["--root", rs, "trace", "no-such-cid"]);
-    assert_eq!(c, 0, "{e}");
+    assert_eq!(c, 1, "{e}");
+    assert!(e.contains("no events"));
 }
 
 #[test]
 fn chaos_verbs_refused() {
     for cmd in ["accept", "chaos-report", "chaos-run"] {
         let (c, _, e) = invoke(&[cmd]);
-        assert_eq!(c, 64, "{cmd}");
+        assert_eq!(c, 1, "{cmd}");
         assert!(e.contains("not in this milestone"), "{cmd}: {e}");
     }
 }
