@@ -1,0 +1,25 @@
+$ python3 -m pytest -q tests
+(exit=1)
+--- stdout ---
+...F.                                                                    [100%]
+=================================== FAILURES ===================================
+____________________________ test_cli_series_output ____________________________
+
+    def test_cli_series_output():
+        out = subprocess.run([sys.executable, "src/calc.py", "series", "4"],
+                             capture_output=True, text=True, cwd=str(ROOT))
+        assert out.returncode == 0, out.stderr
+>       assert out.stdout.strip() == "10", "CLI said %r, expected '10'" % out.stdout.strip()
+E       AssertionError: CLI said '6', expected '10'
+E       assert '6' == '10'
+E         
+E         - 10
+E         + 6
+
+tests/test_calc.py:57: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_calc.py::test_cli_series_output - AssertionError: CLI said ...
+1 failed, 4 passed in 0.06s
+
+--- stderr ---
+

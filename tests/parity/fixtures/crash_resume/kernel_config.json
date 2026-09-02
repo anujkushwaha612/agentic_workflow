@@ -1,0 +1,36 @@
+{
+  "default_policy": "simulated",
+  "role_policies": {
+    "frontend": "wait",
+    "backend": "wait",
+    "testing": "wait",
+    "data": "wait",
+    "evaluation": "wait",
+    "cloud": "simulated",
+    "security": "wait"
+  },
+  "cognition_roles": [],
+  "tool_config": {},
+  "role_overrides": {},
+  "policy_args": {},
+  "budget": {
+    "max_active_agents": 6,
+    "max_concurrent_workers": 2,
+    "max_spawn_epoch": 3,
+    "min_share_of_remaining": 0.1,
+    "requester_overload_factor": 2.0,
+    "idle_ttl": 1000000000.0
+  },
+  "agent_subscriptions": [
+    "resource.*"
+  ],
+  "detect_deadlocks": true,
+  "deadlock_action": "resolve",
+  "auto_assign": true,
+  "reap": true,
+  "stall_limit": 6,
+  "work_unit": 0.25,
+  "clock_mode": "virtual",
+  "clock_step": 0.01,
+  "task_text": "Build a SaaS application with authentication, dashboard, API backend, PostgreSQL database, and cloud deployment"
+}

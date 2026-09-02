@@ -1,0 +1,500 @@
+{
+  "adapter": [
+    {
+      "case": "sim/step0",
+      "intent": {
+        "calls": [],
+        "control": "PUBLISH",
+        "max_calls": 4,
+        "reason": "publish",
+        "think": "",
+        "wait_for": ""
+      },
+      "notes": [],
+      "semantic_msg": {
+        "body": "-33% of backend API",
+        "depth": 0,
+        "from": "be_01",
+        "payload_keys": [
+          "percent"
+        ],
+        "task_id": "t_be",
+        "to": "parent",
+        "type": "TASK_PROGRESS"
+      },
+      "validated_control": "PUBLISH",
+      "wait_for": ""
+    },
+    {
+      "case": "sim/step3",
+      "intent": {
+        "calls": [],
+        "control": "PUBLISH",
+        "max_calls": 4,
+        "reason": "publish",
+        "think": "",
+        "wait_for": ""
+      },
+      "notes": [],
+      "semantic_msg": {
+        "body": "66% of backend API",
+        "depth": 0,
+        "from": "be_01",
+        "payload_keys": [
+          "percent"
+        ],
+        "task_id": "t_be",
+        "to": "parent",
+        "type": "TASK_PROGRESS"
+      },
+      "validated_control": "PUBLISH",
+      "wait_for": ""
+    },
+    {
+      "case": "sim/step4",
+      "intent": {
+        "calls": [],
+        "control": "COMPLETE",
+        "max_calls": 4,
+        "reason": "work finished",
+        "think": "",
+        "wait_for": ""
+      },
+      "notes": [],
+      "semantic_msg": null,
+      "validated_control": "COMPLETE",
+      "wait_for": ""
+    },
+    {
+      "case": "wait/unmet",
+      "intent": {
+        "calls": [],
+        "control": "WAIT",
+        "max_calls": 4,
+        "reason": "needs in/schema.sql",
+        "think": "",
+        "wait_for": "artifact:in/schema.sql"
+      },
+      "notes": [],
+      "semantic_msg": null,
+      "validated_control": "WAIT",
+      "wait_for": "artifact:in/schema.sql"
+    },
+    {
+      "case": "wait/met",
+      "intent": {
+        "calls": [],
+        "control": "PUBLISH",
+        "max_calls": 4,
+        "reason": "publish",
+        "think": "",
+        "wait_for": ""
+      },
+      "notes": [],
+      "semantic_msg": {
+        "body": "integrating t_be",
+        "depth": 0,
+        "from": "be_01",
+        "payload_keys": [
+          "consumed"
+        ],
+        "task_id": "t_be",
+        "to": "parent",
+        "type": "TASK_PROGRESS"
+      },
+      "validated_control": "PUBLISH",
+      "wait_for": ""
+    },
+    {
+      "case": "specialist/ask",
+      "intent": {
+        "calls": [],
+        "control": "",
+        "max_calls": 4,
+        "reason": "working",
+        "think": "",
+        "wait_for": ""
+      },
+      "notes": [],
+      "semantic_msg": null,
+      "validated_control": "",
+      "wait_for": ""
+    }
+  ],
+  "adapter_cognition": {
+    "fingerprint_sans_obj_id": {
+      "kind": "policy",
+      "model": "deterministic",
+      "policy": "NeedsSpecialist",
+      "prompt_sha256_16": "09f17d71fa56b5f1",
+      "source": "policy:needs-specialist"
+    },
+    "model": "deterministic",
+    "name": "policy:needs-specialist"
+  },
+  "fingerprints": [
+    {
+      "case": "bare",
+      "fingerprint": "bdffbcff9c62",
+      "is_noop": true
+    },
+    {
+      "case": "wait",
+      "fingerprint": "7cbe514f9472",
+      "is_noop": false
+    },
+    {
+      "case": "wait_reason",
+      "fingerprint": "1373c6708c4b",
+      "is_noop": false
+    },
+    {
+      "case": "calls",
+      "fingerprint": "0acd80ae67c4",
+      "is_noop": false
+    },
+    {
+      "case": "spawn_dict",
+      "fingerprint": "b74ceddc4f75",
+      "is_noop": false
+    },
+    {
+      "case": "artifacts",
+      "fingerprint": "63ce74cab481",
+      "is_noop": false
+    },
+    {
+      "case": "publish_msg",
+      "fingerprint": "4ff5ad81fbab",
+      "is_noop": false
+    },
+    {
+      "case": "spawn_msg",
+      "fingerprint": "47ea1feaa846",
+      "is_noop": false
+    }
+  ],
+  "outcomes": [
+    {
+      "data": {
+        "flag": false,
+        "n": 3,
+        "name": "x",
+        "ratio": 0.5
+      },
+      "exit_code": 2,
+      "ok": true,
+      "refused": "",
+      "tool": "bash"
+    },
+    {
+      "data": {
+        "keep": "v"
+      },
+      "exit_code": null,
+      "ok": false,
+      "refused": "",
+      "tool": ""
+    },
+    {
+      "data": {},
+      "exit_code": null,
+      "ok": false,
+      "refused": "outside workspace",
+      "tool": "write"
+    }
+  ],
+  "prompt_seed": {
+    "agent_id": "a_01",
+    "budget": {
+      "steps_left": 3
+    },
+    "goal": "build the thing",
+    "graph_view": [
+      {
+        "task_id": "t_1"
+      }
+    ],
+    "history_tail": [
+      {
+        "data": {},
+        "exit_code": null,
+        "ok": true,
+        "refused": "",
+        "tool": "h3"
+      },
+      {
+        "data": {},
+        "exit_code": null,
+        "ok": true,
+        "refused": "",
+        "tool": "h4"
+      },
+      {
+        "data": {},
+        "exit_code": null,
+        "ok": true,
+        "refused": "",
+        "tool": "h5"
+      },
+      {
+        "data": {},
+        "exit_code": null,
+        "ok": true,
+        "refused": "",
+        "tool": "h6"
+      },
+      {
+        "data": {},
+        "exit_code": null,
+        "ok": true,
+        "refused": "",
+        "tool": "h7"
+      },
+      {
+        "data": {},
+        "exit_code": null,
+        "ok": true,
+        "refused": "",
+        "tool": "h8"
+      }
+    ],
+    "notes": [
+      "note one"
+    ],
+    "recent": [
+      {
+        "data": {
+          "n": 3
+        },
+        "exit_code": 0,
+        "ok": true,
+        "refused": "",
+        "tool": "bash"
+      },
+      {
+        "data": {},
+        "exit_code": null,
+        "ok": false,
+        "refused": "path outside workspace",
+        "tool": "write"
+      }
+    ],
+    "role": "worker",
+    "state": "WORKING",
+    "task": {
+      "produces": [
+        "db/schema.sql"
+      ],
+      "status": "OPEN",
+      "task_id": "t_09",
+      "verify": [
+        "pytest",
+        "ruff"
+      ]
+    },
+    "tools": [
+      {
+        "tool": "bash"
+      }
+    ],
+    "unmet": [
+      "api/openapi.json"
+    ],
+    "workspace": {
+      "dirty": true,
+      "files": [
+        "a.py",
+        "b.py"
+      ]
+    }
+  },
+  "render": "agent=a_01 role=worker state=WORKING step=3\ntask=t_09 status=OPEN produces=['db/schema.sql'] verify=2\nunmet=['api/openapi.json']\nworkspace files=['a.py', 'b.py'] dirty=True\nlast bash: ok=True exit=0 \nlast write: ok=False exit=None refused=path outside workspace",
+  "validate_intent": [
+    {
+      "case": "valid",
+      "intent": {
+        "calls": [
+          {
+            "args": {
+              "argv": [
+                "ls",
+                "-la"
+              ]
+            },
+            "tool": "bash"
+          },
+          {
+            "args": {},
+            "tool": "read"
+          }
+        ],
+        "control": "PUBLISH",
+        "max_calls": 4,
+        "reason": "publish after check",
+        "think": "checking",
+        "wait_for": ""
+      },
+      "notes": []
+    },
+    {
+      "case": "missing",
+      "intent": {
+        "calls": [],
+        "control": "NOOP",
+        "max_calls": 4,
+        "reason": "cognition returned nothing",
+        "think": "",
+        "wait_for": ""
+      },
+      "notes": [
+        "INTENT_MISSING"
+      ]
+    },
+    {
+      "case": "unknown_control",
+      "intent": {
+        "calls": [
+          {
+            "args": {},
+            "tool": "bash"
+          }
+        ],
+        "control": "NOOP",
+        "max_calls": 4,
+        "reason": "unknown control 'run'; treated as NOOP",
+        "think": "original thought",
+        "wait_for": ""
+      },
+      "notes": [
+        "CONTROL_UNKNOWN:run"
+      ]
+    },
+    {
+      "case": "unauthorized_all",
+      "intent": {
+        "calls": [],
+        "control": "NOOP",
+        "max_calls": 4,
+        "reason": "all 2 call(s) refused: TOOL_NOT_ALLOWED:rm;TOOL_NOT_ALLOWED:curl",
+        "think": "",
+        "wait_for": ""
+      },
+      "notes": [
+        "TOOL_NOT_ALLOWED:rm",
+        "TOOL_NOT_ALLOWED:curl"
+      ]
+    },
+    {
+      "case": "unauthorized_some",
+      "intent": {
+        "calls": [
+          {
+            "args": {},
+            "tool": "bash"
+          }
+        ],
+        "control": "WAIT",
+        "max_calls": 4,
+        "reason": "",
+        "think": "",
+        "wait_for": ""
+      },
+      "notes": [
+        "TOOL_NOT_ALLOWED:rm"
+      ]
+    },
+    {
+      "case": "truncated",
+      "intent": {
+        "calls": [
+          {
+            "args": {},
+            "tool": "t0"
+          },
+          {
+            "args": {},
+            "tool": "t1"
+          },
+          {
+            "args": {},
+            "tool": "t2"
+          },
+          {
+            "args": {},
+            "tool": "t3"
+          }
+        ],
+        "control": "",
+        "max_calls": 4,
+        "reason": "",
+        "think": "",
+        "wait_for": ""
+      },
+      "notes": [
+        "CALLS_TRUNCATED:6>4"
+      ]
+    },
+    {
+      "case": "mixed_refuse_truncate",
+      "intent": {
+        "calls": [
+          {
+            "args": {},
+            "tool": "t0"
+          },
+          {
+            "args": {},
+            "tool": "t1"
+          },
+          {
+            "args": {},
+            "tool": "t2"
+          },
+          {
+            "args": {},
+            "tool": "t3"
+          }
+        ],
+        "control": "",
+        "max_calls": 4,
+        "reason": "",
+        "think": "",
+        "wait_for": ""
+      },
+      "notes": [
+        "TOOL_NOT_ALLOWED:t6",
+        "CALLS_TRUNCATED:6>4"
+      ]
+    },
+    {
+      "case": "malformed_empty_tool",
+      "intent": {
+        "calls": [],
+        "control": "NOOP",
+        "max_calls": 4,
+        "reason": "all 1 call(s) refused: TOOL_NOT_ALLOWED:",
+        "think": "",
+        "wait_for": ""
+      },
+      "notes": [
+        "TOOL_NOT_ALLOWED:"
+      ]
+    },
+    {
+      "case": "unknown_control_and_refused",
+      "intent": {
+        "calls": [],
+        "control": "NOOP",
+        "max_calls": 4,
+        "reason": "unknown control 'run'; treated as NOOP",
+        "think": "",
+        "wait_for": ""
+      },
+      "notes": [
+        "CONTROL_UNKNOWN:run",
+        "TOOL_NOT_ALLOWED:rm"
+      ]
+    }
+  ]
+}

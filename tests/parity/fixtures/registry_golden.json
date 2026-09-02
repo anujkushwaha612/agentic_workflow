@@ -1,0 +1,386 @@
+{
+ "active": [
+  "be",
+  "generalist",
+  "specialist",
+  "idle",
+  "busy",
+  "done_guy",
+  "paused",
+  "newbie",
+  "boot",
+  "stuck",
+  "up",
+  "waiter",
+  "db_02"
+ ],
+ "cover": {
+  "api design": [
+   "be",
+   "generalist"
+  ],
+  "backend": [
+   "be",
+   "generalist"
+  ],
+  "crew_0": [],
+  "database": [],
+  "empty": [],
+  "oauth auth flow": [
+   "specialist"
+  ],
+  "payments stripe": [],
+  "sql tuning": [
+   "db_02"
+  ]
+ },
+ "duplicate_error": "agent be already registered",
+ "emit_registered_payload": {
+  "agent_id": "db_02",
+  "body": "",
+  "epoch": 1,
+  "reason": "plan task t_db",
+  "role": "database engineer",
+  "skills": [
+   "schema",
+   "sql"
+  ],
+  "spawned_by": "backend_01"
+ },
+ "emit_targets": [
+  "db_02",
+  "db_02"
+ ],
+ "emit_terminated_payload": {
+  "agent_id": "db_02",
+  "body": "",
+  "reason": "idle reap"
+ },
+ "emit_types": [
+  "AGENT_REGISTERED",
+  "AGENT_TERMINATED"
+ ],
+ "idle_overdue": {
+  "0.3": [],
+  "0.5": [],
+  "1.5": [
+   "be",
+   "generalist",
+   "specialist",
+   "idle",
+   "done_guy",
+   "db_02"
+  ]
+ },
+ "load": 3,
+ "next_ids": [
+  "frontend_engineer_01",
+  "frontend_engineer_02",
+  "ml_engineer_01",
+  "dev_ops/infra_01",
+  "ml_engineer_02"
+ ],
+ "overloaded": {
+  "be@0.0": true,
+  "be@9.0": false,
+  "idle": true,
+  "unknown": false
+ },
+ "pending_work": [
+  "big",
+  "t2",
+  "extra"
+ ],
+ "snapshot": {
+  "be": {
+   "agent_id": "be",
+   "cognition": {},
+   "epoch": 0,
+   "load": 3,
+   "msgs_sent": 0,
+   "queue": [
+    "t2",
+    "big",
+    "extra"
+   ],
+   "role": "backend",
+   "skills": [
+    "api",
+    "http"
+   ],
+   "spawned_by": "parent",
+   "state": "IDLE",
+   "state_since": 0.0,
+   "task_id": "big",
+   "waiting_on": [],
+   "work_done": 0.0
+  },
+  "boot": {
+   "agent_id": "boot",
+   "cognition": {},
+   "epoch": 0,
+   "load": 0,
+   "msgs_sent": 0,
+   "queue": [],
+   "role": "init",
+   "skills": [],
+   "spawned_by": "parent",
+   "state": "INITIALIZING",
+   "state_since": 0.0,
+   "task_id": null,
+   "waiting_on": [],
+   "work_done": 0.0
+  },
+  "busy": {
+   "agent_id": "busy",
+   "cognition": {},
+   "epoch": 0,
+   "load": 0,
+   "msgs_sent": 0,
+   "queue": [],
+   "role": "y",
+   "skills": [],
+   "spawned_by": "parent",
+   "state": "WORKING",
+   "state_since": 0.0,
+   "task_id": null,
+   "waiting_on": [],
+   "work_done": 0.0
+  },
+  "db_02": {
+   "agent_id": "db_02",
+   "cognition": {
+    "kind": "policy",
+    "name": "simulated"
+   },
+   "epoch": 1,
+   "load": 0,
+   "msgs_sent": 7,
+   "queue": [],
+   "role": "database engineer",
+   "skills": [
+    "schema",
+    "sql"
+   ],
+   "spawned_by": "backend_01",
+   "state": "IDLE",
+   "state_since": 0.1235,
+   "task_id": null,
+   "waiting_on": [],
+   "work_done": 1.234568
+  },
+  "done_guy": {
+   "agent_id": "done_guy",
+   "cognition": {},
+   "epoch": 0,
+   "load": 0,
+   "msgs_sent": 0,
+   "queue": [],
+   "role": "z",
+   "skills": [],
+   "spawned_by": "parent",
+   "state": "COMPLETED",
+   "state_since": 0.25,
+   "task_id": null,
+   "waiting_on": [],
+   "work_done": 0.0
+  },
+  "generalist": {
+   "agent_id": "generalist",
+   "cognition": {},
+   "epoch": 0,
+   "load": 0,
+   "msgs_sent": 0,
+   "queue": [],
+   "role": "backend",
+   "skills": [
+    "api"
+   ],
+   "spawned_by": "parent",
+   "state": "IDLE",
+   "state_since": 0.0,
+   "task_id": null,
+   "waiting_on": [],
+   "work_done": 0.0
+  },
+  "ghost": {
+   "agent_id": "ghost",
+   "cognition": {},
+   "epoch": 0,
+   "load": 0,
+   "msgs_sent": 0,
+   "queue": [],
+   "role": "gone",
+   "skills": [],
+   "spawned_by": "parent",
+   "state": "TERMINATED",
+   "state_since": 0.0,
+   "task_id": null,
+   "waiting_on": [],
+   "work_done": 0.0
+  },
+  "idle": {
+   "agent_id": "idle",
+   "cognition": {},
+   "epoch": 0,
+   "load": 0,
+   "msgs_sent": 0,
+   "queue": [],
+   "role": "x",
+   "skills": [],
+   "spawned_by": "parent",
+   "state": "IDLE",
+   "state_since": 0.0,
+   "task_id": null,
+   "waiting_on": [
+    null
+   ],
+   "work_done": 0.0
+  },
+  "newbie": {
+   "agent_id": "newbie",
+   "cognition": {},
+   "epoch": 0,
+   "load": 0,
+   "msgs_sent": 0,
+   "queue": [],
+   "role": "n",
+   "skills": [],
+   "spawned_by": "parent",
+   "state": "CREATED",
+   "state_since": 0.0,
+   "task_id": null,
+   "waiting_on": [],
+   "work_done": 0.0
+  },
+  "paused": {
+   "agent_id": "paused",
+   "cognition": {},
+   "epoch": 0,
+   "load": 0,
+   "msgs_sent": 0,
+   "queue": [],
+   "role": "p",
+   "skills": [],
+   "spawned_by": "parent",
+   "state": "PAUSED",
+   "state_since": 0.0,
+   "task_id": null,
+   "waiting_on": [],
+   "work_done": 0.0
+  },
+  "specialist": {
+   "agent_id": "specialist",
+   "cognition": {},
+   "epoch": 0,
+   "load": 0,
+   "msgs_sent": 0,
+   "queue": [],
+   "role": "auth engineer",
+   "skills": [
+    "auth",
+    "jwt",
+    "oauth"
+   ],
+   "spawned_by": "parent",
+   "state": "IDLE",
+   "state_since": 0.0,
+   "task_id": null,
+   "waiting_on": [],
+   "work_done": 0.0
+  },
+  "stuck": {
+   "agent_id": "stuck",
+   "cognition": {},
+   "epoch": 0,
+   "load": 0,
+   "msgs_sent": 0,
+   "queue": [],
+   "role": "s",
+   "skills": [],
+   "spawned_by": "parent",
+   "state": "BLOCKED",
+   "state_since": 0.0,
+   "task_id": null,
+   "waiting_on": [
+    "artifact:big.out"
+   ],
+   "work_done": 0.0
+  },
+  "up": {
+   "agent_id": "up",
+   "cognition": {},
+   "epoch": 0,
+   "load": 0,
+   "msgs_sent": 0,
+   "queue": [],
+   "role": "e",
+   "skills": [],
+   "spawned_by": "parent",
+   "state": "ESCALATED",
+   "state_since": 0.0,
+   "task_id": null,
+   "waiting_on": [],
+   "work_done": 0.0
+  },
+  "waiter": {
+   "agent_id": "waiter",
+   "cognition": {},
+   "epoch": 0,
+   "load": 0,
+   "msgs_sent": 0,
+   "queue": [],
+   "role": "w",
+   "skills": [],
+   "spawned_by": "parent",
+   "state": "WAITING_FOR_DEPENDENCY",
+   "state_since": 0.0,
+   "task_id": null,
+   "waiting_on": [
+    "artifact:t2.done",
+    "tick:9"
+   ],
+   "work_done": 0.0
+  }
+ },
+ "status_lines": [
+  "be                     backend            o IDLE  [big]",
+  "boot                   init               . INITIALIZING",
+  "busy                   y                  * WORKING",
+  "done_guy               z                  + COMPLETED",
+  "generalist             backend            o IDLE",
+  "ghost                  gone               x TERMINATED",
+  "idle                   x                  o IDLE",
+  "newbie                 n                  . CREATED",
+  "paused                 p                  = PAUSED",
+  "specialist             auth engineer      o IDLE",
+  "stuck                  s                  ! BLOCKED",
+  "up                     e                  ^ ESCALATED",
+  "waiter                 w                  ~ WAITING_FOR_DEPENDENCY",
+  "db_02                  database engineer  o IDLE"
+ ],
+ "terminate": {
+  "gone": true,
+  "returned": "idle",
+  "version_bumped": true
+ },
+ "wait_for_edges": {
+  "stuck": [
+   "waiter"
+  ],
+  "waiter": [
+   "idle"
+  ]
+ },
+ "with_state_IDLE": [
+  "be",
+  "generalist",
+  "specialist",
+  "idle",
+  "db_02"
+ ],
+ "with_state_WORKING": [
+  "busy"
+ ],
+ "working_count": 1
+}

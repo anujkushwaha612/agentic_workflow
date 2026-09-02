@@ -1,0 +1,7 @@
+$ python3 src/calc.py add 2 3
+(exit=0)
+--- stdout ---
+5
+
+--- stderr ---
+

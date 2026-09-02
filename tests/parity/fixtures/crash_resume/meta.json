@@ -1,0 +1,20 @@
+{
+ "chain_ok": true,
+ "events": 135,
+ "phase": "pre-crash",
+ "summary": {
+  "agents": 5,
+  "artifacts": 9,
+  "deadlocks": 0,
+  "done": true,
+  "escalations": 0,
+  "events": 135,
+  "injected": 0,
+  "open_tasks": [],
+  "polls": 0,
+  "resident_loops": 0,
+  "stalled": false,
+  "tick": 9
+ },
+ "ticks": 25
+}

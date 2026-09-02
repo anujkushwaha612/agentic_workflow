@@ -1,0 +1,52 @@
+$ python3 -m pytest -q tests
+(exit=1)
+--- stdout ---
+..FFF                                                                    [100%]
+=================================== FAILURES ===================================
+___________________________ test_series_is_inclusive ___________________________
+
+    def test_series_is_inclusive():
+        c = load("calc")
+>       assert c.sum_series(4) == 10, "1+2+3+4 must be 10, got %s" % c.sum_series(4)
+E       AssertionError: 1+2+3+4 must be 10, got 6
+E       assert 6 == 10
+E        +  where 6 = <function sum_series at 0x7fb72e466e80>(4)
+E        +    where <function sum_series at 0x7fb72e466e80> = <module 'calc' from '/home/user/agentic_workflow/tests/parity/fixtures/e2e_calc/ws/projects/fixture-calc/source/src/calc.py'>.sum_series
+
+tests/test_calc.py:50: AssertionError
+____________________________ test_cli_series_output ____________________________
+
+    def test_cli_series_output():
+        out = subprocess.run([sys.executable, "src/calc.py", "series", "4"],
+                             capture_output=True, text=True, cwd=str(ROOT))
+        assert out.returncode == 0, out.stderr
+>       assert out.stdout.strip() == "10", "CLI said %r, expected '10'" % out.stdout.strip()
+E       AssertionError: CLI said '6', expected '10'
+E       assert '6' == '10'
+E         
+E         - 10
+E         + 6
+
+tests/test_calc.py:57: AssertionError
+_____________________________ test_cli_arithmetic ______________________________
+
+    def test_cli_arithmetic():
+        out = subprocess.run([sys.executable, "src/calc.py", "add", "2", "3"],
+                             capture_output=True, text=True, cwd=str(ROOT))
+>       assert out.stdout.strip() == "5", out.stdout
+E       AssertionError: 5.0
+E         
+E       assert '5.0' == '5'
+E         
+E         - 5
+E         + 5.0
+
+tests/test_calc.py:63: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_calc.py::test_series_is_inclusive - AssertionError: 1+2+3+4...
+FAILED tests/test_calc.py::test_cli_series_output - AssertionError: CLI said ...
+FAILED tests/test_calc.py::test_cli_arithmetic - AssertionError: 5.0
+3 failed, 2 passed in 0.07s
+
+--- stderr ---
+

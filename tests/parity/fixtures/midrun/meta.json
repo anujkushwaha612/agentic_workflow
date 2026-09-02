@@ -1,0 +1,19 @@
+{
+ "chain_ok": true,
+ "events": 152,
+ "summary": {
+  "agents": 5,
+  "artifacts": 10,
+  "deadlocks": 0,
+  "done": true,
+  "escalations": 0,
+  "events": 152,
+  "injected": 0,
+  "open_tasks": [],
+  "polls": 0,
+  "resident_loops": 0,
+  "stalled": false,
+  "tick": 10
+ },
+ "ticks": 126
+}
